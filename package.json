@@ -1,0 +1,12 @@
+{
+  "name": "panel-extract",
+  "private": true,
+  "version": "0.8.0",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "test": "node --test tests/import.test.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.61.1"
+  }
+}
