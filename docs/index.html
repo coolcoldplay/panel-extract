@@ -558,6 +558,7 @@ button[data-icon][aria-pressed=true]:hover{background:var(--primary);color:white
 <dialog id="licenseDialog" class="form-dialog" aria-labelledby="noticesTitle">
   <div class="notice-head"><h2 id="noticesTitle">开源项目与许可</h2><form method="dialog"><button autofocus data-icon="x">关闭</button></form></div>
   <p>panel-extract 按 GNU AGPL 第 3 版或更新版本发布。</p>
+  <p>公开网页版使用 Cloudflare Web Analytics 统计页面访问和加载性能。PDF、图片和导出文件在浏览器内处理。<a href="https://developers.cloudflare.com/web-analytics/data-metrics/data-origin-and-collection/">查看统计数据说明</a></p>
   <ul class="credits">
     <li><b>BREVESS</b> 提供 Figure 图注标题的识别规则与界面设计参考。<a href="https://github.com/coolcoldplay/Brevess">项目源码</a></li>
     <li><b>Mozilla PDF.js 5.4.624</b> 负责在浏览器解析和渲染 PDF，使用 Apache-2.0。<a href="https://github.com/mozilla/pdf.js/tree/v5.4.624">项目源码</a></li>
@@ -4317,6 +4318,21 @@ const PaperBatch=(()=>{
   PaperBatch.init();controls();
 })();
 
+</script>
+<script>
+(() => {
+  const sitePath = '/panel-extract/';
+  if (location.origin !== 'https://coolcoldplay.github.io') return;
+  if (location.pathname === sitePath + 'index.html') {
+    history.replaceState(history.state, '', sitePath + location.search + location.hash);
+  }
+  if (location.pathname !== sitePath) return;
+  const beacon = document.createElement('script');
+  beacon.type = 'module';
+  beacon.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+  beacon.dataset.cfBeacon = JSON.stringify({token: 'f58c4a19b15f4b0aaca02a32967d7032', spa: false});
+  document.body.append(beacon);
+})();
 </script>
 </body>
 </html>

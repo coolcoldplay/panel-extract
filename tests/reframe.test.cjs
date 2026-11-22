@@ -108,6 +108,7 @@ test('redraw the correct PDF artwork page, recover a panel, remove a caption and
   try {
     const pdf=await examplePDF(browser);
     const page=await browser.newPage({viewport:{width:1240,height:840}});
+    await page.route('https://static.cloudflareinsights.com/beacon.min.js',r=>r.abort());
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.goto(process.env.PANEL_EXTRACT_URL||pathToFileURL(path.resolve(__dirname,'../docs/index.html')).href);
     await page.locator('#pdfFile').setInputFiles({name:'shapes.pdf',mimeType:'application/pdf',buffer:pdf});

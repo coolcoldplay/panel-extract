@@ -53,6 +53,7 @@ test('blank landing page, local imports, figure preview and exports', {timeout:1
   try {
     const input = await fixtures(browser);
     const page = await browser.newPage();
+    await page.route('https://static.cloudflareinsights.com/beacon.min.js',r=>r.abort());
     const errors = [];
     page.on('pageerror', err => errors.push(err.message));
     await page.goto(url);

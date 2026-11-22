@@ -8,6 +8,7 @@ test('select, trim and erase edge pixels from the surrounding workspace', {timeo
   const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE||undefined});
   try{
     const page=await browser.newPage({viewport:{width:1480,height:940},deviceScaleFactor:1.5});
+    await page.route('https://static.cloudflareinsights.com/beacon.min.js',r=>r.abort());
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.goto(process.env.PANEL_EXTRACT_URL||pathToFileURL(path.resolve(__dirname,'../docs/index.html')).href);
     const source=await page.evaluate(()=>{

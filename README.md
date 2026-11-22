@@ -13,6 +13,10 @@
 
 文件解析、图像处理和导出都在当前浏览器中完成。发布页本身也是一个可离线使用的 HTML 文件。下载后直接用现代桌面浏览器打开即可。[下载独立网页](https://raw.githubusercontent.com/coolcoldplay/panel-extract/main/docs/index.html)
 
+## 访问量
+
+官方 GitHub Pages 网页使用 Cloudflare Web Analytics 统计访问和加载性能。站点管理员可在 Web Analytics 中打开 `coolcoldplay.github.io`，添加 `Path equals /panel-extract/` 筛选，然后查看 **Visits** 和 **Page views**。切换 Figure 或 Panel 属于同一次页面浏览。本地 HTML、开发预览及其他域名均跳过统计。[Cloudflare 数据说明](https://developers.cloudflare.com/web-analytics/data-metrics/data-origin-and-collection/)
+
 ## 开源来源
 
 | 项目 | 在本工具中的作用 |
