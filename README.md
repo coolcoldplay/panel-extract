@@ -5,7 +5,7 @@
 ## 使用
 
 1. 把图片或 PDF 拖入空白页面，或点击「选择文件」。也可以复制截图、图片文件或 PDF 文件，然后在页面按 **Ctrl+V**（macOS 用 **⌘V**）。从文件管理器复制 PDF 时，浏览器需要能从剪贴板读到文件本身。
-2. 打开图片后，选择一个 Panel 查看清理结果。滚轮缩放原图，「移动」拖动视图。「剪除矩形」和「橡皮檫」可直接在放大预览里校正，滚轮调节橡皮檫直径，Ctrl+Z 撤销。共用图例的相邻 Panel 可以合并。
+2. 打开图片后，选择一个 Panel 查看清理结果。滚轮缩放原图，用手掌图标「移动」拖动视图。矩形、套索和剪除都可以从图外灰色区域起笔或松开，选区自动裁到实际图边。「剪除矩形」和「橡皮檫」可直接在放大预览里校正，滚轮调节橡皮檫直径，Ctrl+Z 撤销。悬停或用 Tab 聚焦图标可查看工具名称。共用图例的相邻 Panel 可以合并。
 3. 打开 PDF 后，点击 Figure 名称逐图检查。需要时用「调整整图范围」或「从 PDF 页补选」校正。密集拼图、跨页图注和扫描页尤其值得复核。
 4. 单个 Panel 可直接复制到 PPT 或下载为 PNG。「预览与导出整篇」提供 ZIP 和 PPTX。输入 Figure 名称后，文件名形如 `Fig 1A.png` 或 `Fig 1E-F.png`。PPTX 每页对应一幅 Figure，每个 Panel 都是按原图位置排列的独立图片。
 
@@ -18,6 +18,7 @@
 | BREVESS | 改编其 Figure 图注标题识别规则，并参考阅读工具的界面布局。[对应源码](https://github.com/coolcoldplay/Brevess/blob/6acab0f3d6b507dd0c072c5751516deba89a411e/extension/core/pdf-native-figures.js) |
 | Mozilla PDF.js 5.4.624 | 在浏览器解析 PDF、读取文字与绘图操作并渲染页面。[上游版本](https://github.com/mozilla/pdf.js/tree/v5.4.624) |
 | python-pptx 1.0.2 | 构建网页时生成空白 PPTX 模板。浏览器把 Panel PNG 和坐标写入该模板。[上游版本](https://github.com/scanny/python-pptx/tree/v1.0.2) |
+| Lucide 1.55.0 | 提供随网页内嵌、支持离线使用的工具图标。[上游项目](https://github.com/lucide-icons/lucide) |
 
 Panel 字母序列匹配、沿留白估计边界、按前景像素修正归属、手工遮罩和原位导出由本项目实现。PDFFigures 2.0、连通域复合图分割和 SimCFS 用作方法比较。各项来源、随附字体与解码器的许可见[第三方声明](THIRD_PARTY_NOTICES.md)。
 

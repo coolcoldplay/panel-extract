@@ -3,7 +3,7 @@ const PaperBatch=(()=>{
   const $=id=>document.getElementById(id);
   const tick=()=>new Promise(done=>setTimeout(done,0));
   const element=(tag,txt,cls)=>{const e=document.createElement(tag);if(txt!=null)e.textContent=txt;if(cls)e.className=cls;return e;};
-  const action=(title,handler)=>{const b=element('button',title);b.type='button';b.onclick=handler;return b;};
+  const action=(title,handler,icon)=>{const b=element('button',title);b.type='button';b.onclick=handler;return icon?PanelIcons.set(b,icon,title):b;};
   let job=null,region=null,objectUrl='',pageRequest=0;
   function locked(){return !!job&&job.phase!=='ready';}
   function changed(){if(job?.active&&job.phase==='ready')job.active.dirty=true;}
@@ -64,7 +64,7 @@ const PaperBatch=(()=>{
     j.active=rec;j.mounted=!!m;
     $('pdfSelection').hidden=false;
     $('sourcePage').textContent='第 '+rec.page+' 页'+(rec.captionPage&&rec.captionPage!==rec.page?' · 图注在第 '+rec.captionPage+' 页':'')+(rec.uncertain?' · 请核对整图范围':'');
-    $('reframe').textContent=rec.box?'调整整图范围':'在 PDF 中定位';$('imageDesk').hidden=!m;
+    PanelIcons.set($('reframe'),rec.box?'crop':'crosshair',rec.box?'调整整图范围':'在 PDF 中定位');$('imageDesk').hidden=!m;
     if(m)PanelEditor.mount(m,{...rec.saved,figureName:rec.name});
   }
   function nav(j){
@@ -174,13 +174,13 @@ const PaperBatch=(()=>{
       const name=element('input');name.type='text';name.value=r.name;name.maxLength=80;name.setAttribute('aria-label','Figure 名称 '+r.name);
       name.oninput=()=>{r.name=name.value.trim();if(r.groupId)for(const q of j.entries.filter(q=>q.groupId===r.groupId))q.group=r.name;reviewState(j);};
       const meta=element('small','PDF 第 '+r.page+' 页'+(r.uncertain?' · 请复核范围':'')+(r.outputs?.some(p=>p.whole)?' · 保留整图':''));
-      const adjust=action(r.outputs?.length?'校正':'定位',async()=>{$('batchDialog').close();await switchTo(r);if(!r.outputs?.length)openRegion(r);});
+      const adjust=action(r.outputs?.length?'校正':'定位',async()=>{$('batchDialog').close();await switchTo(r);if(!r.outputs?.length)openRegion(r);},r.outputs?.length?'sliders-horizontal':'crosshair');
       head.append(cb,name,meta,adjust);
       if(r.outputs?.length)head.append(action('预览幻灯片',async()=>{
         try{const all=sheets(j),s=all.find(s=>s.parts.includes(r));if(!s){$('batchMessage').textContent='请先勾选本 Figure 及其 Panel。';return;}
           showImage(await PanelSlides.preview(s,all),s.name,'PPT 排版 · '+s.outputs.length+' 张独立图片');}
         catch(e){$('batchMessage').textContent=e.message;}
-      }));
+      },'eye'));
       sect.append(head);const grid=element('div',null,'thumb-grid');
       for(const p of r.outputs||[]){
         const cell=element('div',null,'thumb'),pic=action('',()=>showImage(p.blob,PanelFiles.filename(r.name,p),p.box[2]+' × '+p.box[3]+' px'));
@@ -283,13 +283,29 @@ const PaperBatch=(()=>{
     $('pageDialog').onclose=()=>{pageRequest++;region=null;const c=$('pageBoard');c.width=c.height=1;};
     $('pagePrev').onclick=()=>displayPage(region.num-1);$('pageNext').onclick=()=>displayPage(region.num+1);
     $('pageNum').onchange=()=>displayPage($('pageNum').value);$('useRegion').onclick=applyRegion;
-    const c=$('pageBoard');
+    const c=$('pageBoard'),stage=$('pageStage');
     function at(e){const r=c.getBoundingClientRect(),p=job.pages[region.num-1];return [Math.max(0,Math.min(p.w,(e.clientX-r.left)*p.w/r.width)),Math.max(0,Math.min(p.h,(e.clientY-r.top)*p.h/r.height))];}
     function trace(e){if(!region?.start||region.pointer!==e.pointerId)return;
       const a=region.start,b=at(e);region.box=[Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[0],b[0]),Math.max(a[1],b[1])];drawRegion();}
-    c.onpointerdown=e=>{if(!region?.source||region.saving||e.button!==0)return;region.previous=region.box;region.start=at(e);region.pointer=e.pointerId;c.setPointerCapture(e.pointerId);trace(e);};
-    c.onpointermove=trace;c.onpointerup=e=>{trace(e);if(region)region.start=null;};
-    c.onpointercancel=()=>{if(region){region.box=region.previous;region.start=null;drawRegion();}};
+    stage.onpointerdown=e=>{
+      if(!region?.source||region.saving||region.start||e.button!==0)return;
+      const bounds=stage.getBoundingClientRect();
+      if(e.clientX>=bounds.left+stage.clientLeft+stage.clientWidth||e.clientY>=bounds.top+stage.clientTop+stage.clientHeight)return;
+      e.preventDefault();region.previous=region.box;region.start=at(e);region.pointer=e.pointerId;
+      stage.setPointerCapture(e.pointerId);trace(e);
+    };
+    stage.onpointermove=trace;
+    function finish(e,commit){
+      if(!region?.start||region.pointer!==e.pointerId)return;
+      if(commit)trace(e);
+      const b=region.box;
+      if(!commit||!b||b[2]-b[0]<4||b[3]-b[1]<4)region.box=region.previous;
+      region.start=null;region.pointer=null;
+      if(stage.hasPointerCapture(e.pointerId))stage.releasePointerCapture(e.pointerId);
+      drawRegion();
+    }
+    stage.onpointerup=e=>finish(e,true);
+    stage.onpointercancel=stage.onlostpointercapture=e=>finish(e,false);
   }
   return {init,locked,changed,leave,load,showImage};
 })();

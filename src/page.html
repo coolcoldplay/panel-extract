@@ -9,6 +9,7 @@
 <style>/*__CSS__*/</style>
 </head>
 <body>
+<!--__ICON_SPRITE__-->
 <header class="topbar"><div class="top-inner">
   <a class="brand" href="#workspace" aria-label="panel-extract 首页"><span class="mark" aria-hidden="true"></span>panel-extract</a>
   <a class="source-link" href="https://github.com/coolcoldplay/panel-extract">GitHub</a>
@@ -16,7 +17,7 @@
 <main id="workspace">
   <div class="intro" id="workIntro" hidden>
     <div><h1>论文图版提取</h1><p>打开 PDF 批量提取 Figure 和 Panel，或从一张整图开始。</p></div>
-    <div class="actions"><button id="openBtn">打开图片</button><button class="primary" id="openPdf">打开 PDF</button></div>
+    <div class="actions"><button id="openBtn" data-icon="image" data-caption="图片">打开图片</button><button class="primary" id="openPdf" data-icon="file-text" data-caption="PDF">打开 PDF</button></div>
   </div>
   <input type="file" id="file" accept="image/*" hidden><input type="file" id="pdfFile" accept=".pdf,application/pdf" hidden>
   <input type="file" id="importFile" accept="image/*,.pdf,application/pdf" hidden>
@@ -26,16 +27,16 @@
       <div class="drop-content">
         <h1 id="importTitle">导入图片或 PDF</h1>
         <p>将文件拖到这里，或按 <kbd id="pasteModifier">Ctrl</kbd> + <kbd>V</kbd> 粘贴。</p>
-        <button class="primary" id="browseFile">选择文件</button>
+        <button class="primary" id="browseFile" data-icon="folder-open" data-caption>选择文件</button>
         <p class="local-note">文件仅在你的浏览器中处理。</p>
       </div>
     </div>
   </section>
   <section class="card pdf-desk" id="pdfDesk" hidden aria-labelledby="pdfName">
     <div class="card-head"><div><h2 id="pdfName">PDF</h2><p id="pdfSummary" aria-live="polite"></p></div><div class="small-row">
-      <button id="addFigure">从 PDF 页补选</button><button id="batchReview" class="primary">预览与导出整篇</button><button id="closePdf">关闭 PDF</button></div></div>
+      <button id="addFigure" data-icon="square-dashed-plus">从 PDF 页补选</button><button id="batchReview" class="primary" data-icon="gallery-horizontal-end" data-caption="整篇预览">预览与导出整篇</button><button id="closePdf" data-icon="x">关闭 PDF</button></div></div>
     <progress id="pdfProgress" hidden></progress><div class="figures-nav" id="figureNav" aria-label="PDF 图目录"></div>
-    <div class="pdf-selection" id="pdfSelection" hidden><span id="sourcePage"></span><button id="reframe">调整整图范围</button></div>
+    <div class="pdf-selection" id="pdfSelection" hidden><span id="sourcePage"></span><button id="reframe" data-icon="crop">调整整图范围</button></div>
   </section>
   <div class="columns" id="imageDesk" hidden>
     <section class="card figure" aria-labelledby="figTitle">
@@ -43,90 +44,92 @@
         <label class="check"><input type="checkbox" id="outline" checked> 显示边界</label>
       </div>
       <div class="drawbar" id="edits" role="group" aria-label="绘制选区">
-        <button data-edit="select" aria-pressed="true">选择</button><button data-edit="pan" title="按住鼠标拖动即可移动整图，滚轮可缩放">移动</button><button data-edit="new">矩形选取</button><button data-edit="lasso">套索圈选</button>
-        <button data-edit="merge">合并 Panel</button><button id="undo" data-undo>撤销</button><button id="blankSet">从空白开始</button>
+        <button data-edit="select" aria-pressed="true" data-icon="mouse-pointer-2">选择</button><button data-edit="pan" title="按住鼠标拖动即可移动整图，滚轮可缩放" data-icon="hand">移动</button><button data-edit="new" data-icon="square-dashed">矩形选取</button><button data-edit="lasso" data-icon="lasso">套索圈选</button>
+        <button data-edit="merge" data-icon="group">合并 Panel</button><button id="undo" data-undo data-icon="undo-2">撤销</button><button id="blankSet" data-icon="file">从空白开始</button>
       </div>
-      <div id="mergeTools" hidden><div id="mergeLabels" role="group" aria-label="勾选合并成员"></div><div class="small-row"><span id="mergeName"></span><button id="previewMerge">预览合并</button><button class="primary" id="doMerge">确认合并</button></div></div>
+      <div id="mergeTools" hidden><div id="mergeLabels" role="group" aria-label="勾选合并成员"></div><div class="small-row"><span id="mergeName"></span><button id="previewMerge" data-icon="eye">预览合并</button><button class="primary" id="doMerge" data-icon="check">确认合并</button></div></div>
       <div class="fig-stage viewport" id="stage">
         <div id="figureSurface" class="surface" hidden><canvas id="sourceView" aria-label="原始整图"></canvas><canvas id="overlay" aria-label="Panel 边界，可点击选择或拖动校正"></canvas></div><span class="eraser-ring" hidden aria-hidden="true"></span>
       </div>
       <div class="fig-foot"><span id="stageHint">点击图中区域选择 Panel</span>
-        <div class="zoom"><output id="overviewScale" class="scale" aria-label="整图缩放比例"></output><button id="fit" aria-pressed="true">适应</button><button id="actual" aria-pressed="false">原大</button></div>
+        <div class="zoom"><output id="overviewScale" class="scale" aria-label="整图缩放比例"></output><button id="fit" aria-pressed="true" data-icon="scan">适应</button><button id="actual" aria-pressed="false" data-icon="ratio" data-caption="1:1">原大</button></div>
       </div>
     </section>
     <div class="right">
       <section class="card inspector" aria-labelledby="panelTitle">
         <div class="card-head"><div><h2 id="panelTitle">Panel 预览</h2><p id="panelMeta">—</p></div>
-          <div class="arrows"><button id="prev" aria-label="上一个 Panel">‹</button><button id="next" aria-label="下一个 Panel">›</button></div>
+          <div class="arrows"><button id="prev" aria-label="上一个 Panel" data-icon="chevron-left">‹</button><button id="next" aria-label="下一个 Panel" data-icon="chevron-right">›</button></div>
         </div>
         <div class="panel-picker"><div class="picker-head"><h3>选择 Panel</h3><span id="panelCount" class="mono"></span></div><div id="labels" role="group" aria-label="Panel 列表"></div></div>
         <section id="editor" aria-labelledby="editTitle">
-          <div class="picker-head"><h3 id="editTitle">调整所选 Panel</h3><button class="undo-link" data-undo title="撤销上一步（Ctrl+Z）">撤销</button></div>
-          <div class="edit-actions"><button data-edit="exclude" title="拖出矩形，将所选 Panel 内的区域填白">剪除矩形</button><button data-edit="erase" title="拖动擦除，滚轮调节圆形橡皮檫大小">橡皮檫</button><button data-edit="include">补选矩形</button><button data-edit="replace">用矩形重画</button><button data-edit="replaceLasso">用套索重画</button><button id="rename">改名</button><button id="ungroup" hidden>恢复合并前各成员</button><button id="delete">删除所选</button></div>
+          <div class="picker-head"><h3 id="editTitle">调整所选 Panel</h3><button class="undo-link" data-undo title="撤销上一步（Ctrl+Z）" data-icon="undo-2">撤销</button></div>
+          <div class="edit-actions"><button data-edit="exclude" title="拖出矩形，将所选 Panel 内的区域填白" data-icon="scissors-square-dashed-bottom">剪除矩形</button><button data-edit="erase" title="拖动擦除，滚轮调节圆形橡皮檫大小" data-icon="eraser">橡皮檫</button><button data-edit="include" data-icon="square-dashed-plus">补选矩形</button><button data-edit="replace" data-icon="square-pen">用矩形重画</button><button data-edit="replaceLasso" data-icon="lasso-select">用套索重画</button><button id="rename" data-icon="text-cursor-input">改名</button><button id="ungroup" hidden data-icon="ungroup">恢复合并前各成员</button><button id="delete" data-icon="trash-2">删除所选</button></div>
         </section>
         <div class="tabs" id="tabs" role="group" aria-label="预览模式">
-          <button data-mode="clean" aria-pressed="true">清理后</button><button data-mode="raw" aria-pressed="false">矩形初裁</button><button data-mode="removed" aria-pressed="false">剔除位置</button>
+          <button data-mode="clean" aria-pressed="true" data-icon="image" data-caption>清理后</button><button data-mode="raw" aria-pressed="false" data-icon="crop" data-caption>矩形初裁</button><button data-mode="removed" aria-pressed="false" data-icon="scan-eye" data-caption>剔除位置</button>
         </div>
         <div class="preview-stage viewport" id="previewStage"><div class="surface" id="previewSurface" hidden><canvas id="preview" aria-label="所选 Panel 的像素预览"></canvas><canvas class="draft" aria-hidden="true"></canvas></div><span class="eraser-ring" hidden aria-hidden="true"></span><div id="noPreview">请在原图上框选一个 Panel</div></div>
-        <div class="local-zoom"><output id="panelScale" class="scale" aria-label="Panel 缩放比例"></output><button data-zoom="panel" data-step="-1" aria-label="缩小 Panel">−</button><button data-zoom="panel" data-step="1" aria-label="放大 Panel">＋</button><button data-zoom="panel" data-step="fit">适应</button><button id="fullPreview">放大编辑</button></div>
+        <div class="local-zoom"><output id="panelScale" class="scale" aria-label="Panel 缩放比例"></output><button data-zoom="panel" data-step="-1" aria-label="缩小 Panel" data-icon="zoom-out">−</button><button data-zoom="panel" data-step="1" aria-label="放大 Panel" data-icon="zoom-in">＋</button><button data-zoom="panel" data-step="fit" data-icon="scan">适应</button><button id="fullPreview" data-icon="maximize-2">放大编辑</button></div>
         <div class="preview-note"><div class="preview-caption" id="previewCaption">—</div></div>
-        <div class="export-row"><button id="copy" class="primary" title="复制当前 Panel 的 PNG（Ctrl+C）">复制 PNG</button><button id="one">下载 PNG</button><button id="all">打包 ZIP</button><button id="pptBtn">本图 PPTX</button></div>
+        <div class="export-row"><button id="copy" class="primary" title="复制当前 Panel 的 PNG（Ctrl+C）" data-icon="copy" data-caption="复制">复制 PNG</button><button id="one" data-icon="image-down" data-caption="PNG">下载 PNG</button><button id="all" data-icon="file-archive" data-caption="ZIP">打包 ZIP</button><button id="pptBtn" data-icon="presentation" data-caption="PPTX">本图 PPTX</button></div>
       </section>
       <section class="card tools">
         <details id="extras"><summary>导出设置与复核<span aria-hidden="true">＋</span></summary>
           <div class="drawer">
             <div class="settings"><label>边距 <input id="pad" type="number" min="0" max="96" value="0"> px</label>
               <label>遮罩外 <select id="paper"><option value="paper">背景色</option><option value="transparent">透明</option></select></label></div>
-            <div class="small-row"><button id="jsonBtn">区域 JSON</button><button id="som">编号整图</button><button id="promptBtn">复核提示词</button></div>
+            <div class="small-row"><button id="jsonBtn" data-icon="file-json">区域 JSON</button><button id="som" data-icon="list-ordered">编号整图</button><button id="promptBtn" data-icon="message-square-text">复核提示词</button></div>
             <textarea id="review" rows="3" aria-label="复核提示词或模型返回的描述 JSON" placeholder="可粘贴复核 JSON，按 Panel ID 回填描述"></textarea>
-            <div class="small-row"><button id="apply">导入复核描述</button></div>
+            <div class="small-row"><button id="apply" data-icon="clipboard-paste">导入复核描述</button></div>
           </div>
         </details>
       </section>
     </div>
   </div>
-  <footer><button class="linkbtn" id="openNotices">开源项目与许可</button><span aria-hidden="true">·</span><a href="https://github.com/coolcoldplay/panel-extract/blob/main/LICENSE">AGPL-3.0-or-later</a></footer>
+  <footer><button class="linkbtn" id="openNotices" data-icon="book-open" data-caption>开源项目与许可</button><span aria-hidden="true">·</span><a href="https://github.com/coolcoldplay/panel-extract/blob/main/LICENSE">AGPL-3.0-or-later</a></footer>
 </main>
-<dialog id="batchDialog" class="batch-dialog" aria-labelledby="batchTitle"><div class="card-head"><div><h2 id="batchTitle">整篇导出预览</h2><p id="batchSummary"></p></div><button id="backToPaper">返回编辑</button></div>
-  <div class="batch-settings"><label class="name-field">导出文件名<input id="archiveName" maxlength="100"></label><div class="small-row"><button id="batchAll">全选</button><button id="batchNone">全不选</button></div></div>
-  <div id="batchGallery"></div><div class="batch-foot"><span id="batchMessage" role="status"></span><button id="downloadPaper">下载 ZIP</button><button class="primary" id="downloadSlides">下载 PPTX</button></div>
+<dialog id="batchDialog" class="batch-dialog" aria-labelledby="batchTitle"><div class="card-head"><div><h2 id="batchTitle">整篇导出预览</h2><p id="batchSummary"></p></div><button id="backToPaper" data-icon="arrow-left">返回编辑</button></div>
+  <div class="batch-settings"><label class="name-field">导出文件名<input id="archiveName" maxlength="100"></label><div class="small-row"><button id="batchAll" data-icon="list-checks">全选</button><button id="batchNone" data-icon="list-x">全不选</button></div></div>
+  <div id="batchGallery"></div><div class="batch-foot"><span id="batchMessage" role="status"></span><button id="downloadPaper" data-icon="file-archive" data-caption="ZIP">下载 ZIP</button><button class="primary" id="downloadSlides" data-icon="presentation" data-caption="PPTX">下载 PPTX</button></div>
 </dialog>
-<dialog id="pageDialog" class="page-dialog" aria-labelledby="pageTitle"><div class="card-head"><div><h2 id="pageTitle">在 PDF 页上选取整图</h2><p>拖动矩形圈住整幅 Figure 及其字母，避开图注。</p></div><button id="pageClose">取消</button></div>
-  <div class="batch-settings"><label>页码 <input id="pageNum" type="number" min="1"></label><span id="pageTotal"></span><button id="pagePrev" aria-label="上一页">‹</button><button id="pageNext" aria-label="下一页">›</button>
+<dialog id="pageDialog" class="page-dialog" aria-labelledby="pageTitle"><div class="card-head"><div><h2 id="pageTitle">在 PDF 页上选取整图</h2><p>拖动矩形圈住整幅 Figure 及其字母，避开图注。</p></div><button id="pageClose" data-icon="x">取消</button></div>
+  <div class="batch-settings"><label>页码 <input id="pageNum" type="number" min="1"></label><span id="pageTotal"></span><button id="pagePrev" aria-label="上一页" data-icon="chevron-left">‹</button><button id="pageNext" aria-label="下一页" data-icon="chevron-right">›</button>
     <label>Figure 名称 <input id="regionName" maxlength="80"></label></div>
-  <div class="page-surface"><canvas id="pageBoard" aria-label="拖动选择整图范围"></canvas></div>
-  <div class="batch-foot"><span id="regionInfo"></span><button id="useRegion" class="primary">确认范围并提取</button></div>
+  <div class="page-surface" id="pageStage"><canvas id="pageBoard" aria-label="拖动选择整图范围"></canvas></div>
+  <div class="batch-foot"><span id="regionInfo"></span><button id="useRegion" class="primary" data-icon="check">确认范围并提取</button></div>
 </dialog>
-<dialog id="pngDialog" class="page-dialog" aria-labelledby="pngTitle"><div class="card-head"><div><h2 id="pngTitle">PNG 预览</h2><p id="pngInfo"></p></div><button id="pngClose">关闭</button></div><div class="png-stage"><img id="pngImage" alt="将导出的 PNG"></div></dialog>
+<dialog id="pngDialog" class="page-dialog" aria-labelledby="pngTitle"><div class="card-head"><div><h2 id="pngTitle">PNG 预览</h2><p id="pngInfo"></p></div><button id="pngClose" data-icon="x">关闭</button></div><div class="png-stage"><img id="pngImage" alt="将导出的 PNG"></div></dialog>
 <dialog id="licenseDialog" class="form-dialog" aria-labelledby="noticesTitle">
-  <div class="notice-head"><h2 id="noticesTitle">开源项目与许可</h2><form method="dialog"><button autofocus>关闭</button></form></div>
+  <div class="notice-head"><h2 id="noticesTitle">开源项目与许可</h2><form method="dialog"><button autofocus data-icon="x">关闭</button></form></div>
   <p>panel-extract 按 GNU AGPL 第 3 版或更新版本发布。</p>
   <ul class="credits">
     <li><b>BREVESS</b> 提供 Figure 图注标题的识别规则与界面设计参考。<a href="https://github.com/coolcoldplay/Brevess">项目源码</a></li>
     <li><b>Mozilla PDF.js 5.4.624</b> 负责在浏览器解析和渲染 PDF，使用 Apache-2.0。<a href="https://github.com/mozilla/pdf.js/tree/v5.4.624">项目源码</a></li>
     <li><b>python-pptx 1.0.2</b> 在构建时生成空白 PPTX 模板，使用 MIT 许可。<a href="https://github.com/scanny/python-pptx/tree/v1.0.2">项目源码</a></li>
+    <li><b>Lucide 1.55.0</b> 提供工具图标，采用 ISC 许可，源自 Feather 的图标采用 MIT 许可。<a href="https://github.com/lucide-icons/lucide">项目源码</a></li>
   </ul>
   <p>图版边界计算、遮罩编辑及导出排版由本项目实现。方法参考、第三方资源和源码说明见<a href="https://github.com/coolcoldplay/panel-extract/blob/main/THIRD_PARTY_NOTICES.md">完整来源清单</a>。</p>
   <details><summary>查看随附的第三方许可原文</summary>__THIRD_PARTY_LICENSES__</details>
 </dialog>
 <dialog id="pixelDialog" aria-labelledby="pixelTitle">
   <div class="card-head"><div><h2 id="pixelTitle">原大预览</h2><p id="pixelMeta"></p></div>
-    <form method="dialog"><button autofocus>关闭</button></form>
+    <form method="dialog"><button autofocus data-icon="x">关闭</button></form>
   </div>
-  <div class="pixel-tools"><div class="edit-actions" role="group" aria-label="放大视图工具"><button data-edit="pan" title="按住鼠标拖动即可移动视图">移动</button><button data-edit="exclude">剪除矩形</button><button data-edit="erase" title="拖动擦除，滚轮调整直径">橡皮檫</button><button data-undo>撤销</button></div>
-    <div class="local-zoom"><output id="pixelScale" class="scale" aria-label="放大视图缩放比例"></output><button data-zoom="pixel" data-step="-1" aria-label="缩小视图">−</button><button data-zoom="pixel" data-step="1" aria-label="放大视图">＋</button><button data-zoom="pixel" data-step="fit">适应</button><button data-zoom="pixel" data-step="actual">原大</button></div></div>
+  <div class="pixel-tools"><div class="edit-actions" role="group" aria-label="放大视图工具"><button data-edit="pan" title="按住鼠标拖动即可移动视图" data-icon="hand">移动</button><button data-edit="exclude" data-icon="scissors-square-dashed-bottom">剪除矩形</button><button data-edit="erase" title="拖动擦除，滚轮调整直径" data-icon="eraser">橡皮檫</button><button data-undo data-icon="undo-2">撤销</button></div>
+    <div class="local-zoom"><output id="pixelScale" class="scale" aria-label="放大视图缩放比例"></output><button data-zoom="pixel" data-step="-1" aria-label="缩小视图" data-icon="zoom-out">−</button><button data-zoom="pixel" data-step="1" aria-label="放大视图" data-icon="zoom-in">＋</button><button data-zoom="pixel" data-step="fit" data-icon="scan">适应</button><button data-zoom="pixel" data-step="actual" data-icon="ratio" data-caption="1:1">原大</button></div></div>
   <div id="pixelScroll" class="viewport"><div id="pixelSurface" class="surface"><canvas id="pixelCanvas" aria-label="所选 Panel 放大画布"></canvas><canvas class="draft" aria-hidden="true"></canvas></div><span class="eraser-ring" hidden aria-hidden="true"></span></div>
 </dialog>
 <dialog id="saveDialog" class="form-dialog" aria-labelledby="saveTitle"><form id="saveForm">
   <h2 id="saveTitle">导出 Panel</h2>
   <label class="name-field">Figure 名称<input id="figureName" type="text" maxlength="100" required autocomplete="off" placeholder="Fig 1"></label>
-  <div id="packPicker"><div class="picker-head"><h3>打包的 Panel</h3><div class="small-row"><button type="button" id="pickAll">全选</button><button type="button" id="pickNone">全不选</button></div></div><div id="packLabels"></div></div>
-  <p id="namePreview" aria-live="polite"></p><div class="dialog-actions"><button id="singleSlidePreview" type="button" hidden>预览幻灯片</button><button id="cancelSave" type="button">取消</button><button class="primary" id="confirmSave" type="submit">导出</button></div>
+  <div id="packPicker"><div class="picker-head"><h3>打包的 Panel</h3><div class="small-row"><button type="button" id="pickAll" data-icon="list-checks">全选</button><button type="button" id="pickNone" data-icon="list-x">全不选</button></div></div><div id="packLabels"></div></div>
+  <p id="namePreview" aria-live="polite"></p><div class="dialog-actions"><button id="singleSlidePreview" type="button" hidden data-icon="eye">预览幻灯片</button><button id="cancelSave" type="button" data-icon="x">取消</button><button class="primary" id="confirmSave" type="submit" data-icon="download">导出</button></div>
 </form></dialog>
-<dialog id="copyDialog" class="form-dialog" aria-labelledby="copyTitle"><h2 id="copyTitle">复制 PNG</h2><p>浏览器未授予直接写入权限。可右键下图选择「复制图像」，然后在目标软件中粘贴。</p><div id="copyImage"></div><form method="dialog"><button>关闭</button></form></dialog>
+<dialog id="copyDialog" class="form-dialog" aria-labelledby="copyTitle"><h2 id="copyTitle">复制 PNG</h2><p>浏览器未授予直接写入权限。可右键下图选择「复制图像」，然后在目标软件中粘贴。</p><div id="copyImage"></div><form method="dialog"><button data-icon="x">关闭</button></form></dialog>
 <script id="pdfAssets" type="application/json">__PDF_ASSETS__</script>
 <script id="pptParts" type="application/json">__PPT_PARTS__</script>
 <script>
+/*__ICONS__*/
 /*__ENGINE__*/
 /*__EXPORT__*/
 /*__BRUSH__*/

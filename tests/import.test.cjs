@@ -83,6 +83,19 @@ test('blank landing page, local imports, figure preview and exports', {timeout:1
     // Start with a pasted PDF, then close it to restore the empty workspace.
     await transfer(page,'paste',input.pdf,'clipboard-figure.pdf','application/pdf');
     await pdfReady();
+    await page.locator('#reframe').click();
+    await page.waitForFunction(()=>document.querySelector('#pageBoard').width>300&&!document.querySelector('#useRegion').disabled);
+    const board=await page.locator('#pageBoard').boundingBox();
+    const frame=await page.locator('#pageStage').boundingBox();
+    assert.ok(board.x-frame.x>8&&board.y-frame.y>8);
+    await page.mouse.move(board.x-7,board.y-7);await page.mouse.down();
+    await page.mouse.move(board.x+board.width*.4,board.y+board.height*.25,{steps:4});await page.mouse.up();
+    const newSize=await page.locator('#regionInfo').innerText();
+    assert.match(newSize,/180 × 8[23] pt/);
+    await page.mouse.move(board.x-9,board.y+10);await page.mouse.down();
+    await page.mouse.move(board.x-4,board.y+60);await page.mouse.up();
+    assert.equal(await page.locator('#regionInfo').innerText(),newSize);
+    await page.locator('#pageClose').click();
     await page.locator('#batchReview').click();
     assert.equal(await page.locator('#batchDialog').isVisible(), true);
     assert.ok(await page.locator('#batchGallery img').count() > 0);

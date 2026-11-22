@@ -71,7 +71,7 @@ const PanelOutput = (() => {
     const [x,y,w,h]=asXYWH(box);
     const item=model.items[id],originalId=item.autoId??id;
     const xs=mapAxis(x,w,model.w,model.source.width), ys=mapAxis(y,h,model.h,model.source.height);
-    const keep=[],white=[];
+    const keep=[],white=[],rowExtent=[x,x+w];
     const original=!item.shape&&item.brush?.some(op=>op.kind==='add')?nativeBox(model,item.box):null;
     let automatic=[];
     for (let j=0;j<h;j++) {
@@ -84,7 +84,7 @@ const PanelOutput = (() => {
         }
       }
       const local=v=>clamp(v-x,0,w),cy=y+j;
-      let runs=item.shape?shapeRow(item.shape,cy).map(local):automatic;
+      let runs=item.shape?intersect(shapeRow(item.shape,cy),rowExtent).map(v=>v-x):automatic;
       if(item.additions?.length) {
         runs=runs.slice();
         for(const r of item.additions) if(cy>=r[1] && cy<r[3]) runs.push(local(r[0]),local(r[2]));

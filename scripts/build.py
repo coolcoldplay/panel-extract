@@ -20,7 +20,7 @@ PDF_VERSION = "5.4.624"
 ARCHIVE_NAME = f"pdfjs-dist-{PDF_VERSION}.tgz"
 ARCHIVE_URL = f"https://registry.npmjs.org/pdfjs-dist/-/{ARCHIVE_NAME}"
 SHA512 = "sm6TxKTtWv1Oh6n3C6J6a8odejb5uO4A4zo/2dgkHuC0iu8ZMAXOezEODkVaoVp8nX1Xzr+0WxFJJmUr45hQzg=="
-MODULES = ("engine", "export", "brush", "viewport", "pdf", "slides", "batch", "app")
+MODULES = ("icons", "engine", "export", "brush", "viewport", "pdf", "slides", "batch", "app")
 RESOURCE_DIRS = {"cmaps", "standard_fonts", "wasm", "iccs"}
 
 
@@ -87,6 +87,7 @@ def blank_presentation():
 def build(local_archive=None):
     src = ROOT / "src"
     page = (src / "page.html").read_text(encoding="utf-8")
+    page = page.replace("<!--__ICON_SPRITE__-->", (src / "icons.svg").read_text(encoding="utf-8"))
     page = page.replace("/*__CSS__*/", (src / "style.css").read_text(encoding="utf-8"))
     for module in MODULES:
         marker = f"/*__{module.upper()}__*/"
@@ -95,6 +96,7 @@ def build(local_archive=None):
         page = page.replace(marker, (src / f"{module}.js").read_text(encoding="utf-8"))
     assets, notices = pdf_assets(pdf_archive(local_archive))
     notices["python-pptx · MIT"] = (ROOT / "licenses/python-pptx-MIT.txt").read_text(encoding="utf-8")
+    notices["Lucide · ISC / MIT"] = (ROOT / "licenses/lucide-ISC-MIT.txt").read_text(encoding="utf-8")
     license_html = "".join(
         f"<h3>{html.escape(name)}</h3><pre>{html.escape(notice)}</pre>" for name, notice in notices.items()
     )

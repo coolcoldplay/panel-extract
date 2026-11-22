@@ -29,7 +29,7 @@
     for (const id of ['pad','paper','outline','actual','fit']) $(id).disabled=busy || !model;
     for (const id of ['openBtn','openPdf','browseFile']) $(id).disabled=busy||PaperBatch.locked();
     $('blankSet').disabled=busy || !model || (!any&&!blankMode);
-    $('blankSet').textContent=blankMode?'恢复自动划分':'从空白开始';
+    PanelIcons.set($('blankSet'),blankMode?'rotate-ccw':'file',blankMode?'恢复自动划分':'从空白开始');
     $('ungroup').hidden=!active()?.sources;$('ungroup').disabled=busy||!active()?.sources;
     $('prev').disabled=busy || selected<=0; $('next').disabled=busy || !has || selected>=model.items.length-1;
     for(const b of document.querySelectorAll('[data-undo]'))b.disabled=busy||!history.length;
@@ -100,14 +100,16 @@
       geometry||=paths();ctx.fillStyle='rgba(16,103,174,.20)';ctx.strokeStyle='#174c85';ctx.lineWidth=Math.max(2,w/440);
       for(const id of mergeIds){ctx.fill(geometry[id].fill);ctx.stroke(geometry[id].line);}
     }
-    if(drag && drag.mode!=='pan'){
+    const guideView=drag&&drag.mode!=='pan'&&drag.mode!=='erase'?drag.view:null;
+    if(guideView)guideView.drawGuide(ctx=>drawDraft(ctx,guideView));
+    if(drag && drag.mode!=='pan' && guideView!==overview){
       ctx.save();ctx.scale(w/model.source.width,h/model.source.height);drawDraft(ctx,overview);ctx.restore();
     }
     for(const v of [panelView,pixelView]){
       if(v.surface.hidden || (v===pixelView&&!$('pixelDialog').open))continue;
       const canvas=v.surface.querySelector('.draft'),cx=canvas.getContext('2d');
       cx.clearRect(0,0,canvas.width,canvas.height);
-      if(!drag||!localTools(drag.mode)||previewMode!=='clean')continue;
+      if(!drag||guideView===v||!localTools(drag.mode)||previewMode!=='clean')continue;
       const [l,t,r,b]=v.box;cx.save();cx.scale(canvas.width/(r-l),canvas.height/(b-t));cx.translate(-l,-t);
       drawDraft(cx,v);cx.restore();
     }
@@ -187,7 +189,7 @@
     $('panelTitle').textContent='Panel '+item.label;
     $('panelMeta').textContent=crop.width+' × '+crop.height+' px'+(item.edited?'  ·  手动校正':'');
     $('previewCaption').textContent=note;
-    $('fullPreview').textContent=previewMode==='clean'?'放大编辑':'放大查看';
+    PanelIcons.set($('fullPreview'),'maximize-2',previewMode==='clean'?'放大编辑':'放大查看');
   }
   function select(id) {
     if (!model || busy) return;
@@ -196,6 +198,7 @@
   function cancelDrag(){
     const prev=drag;drag=null;
     if(!prev)return;
+    prev.view.drawGuide(null);
     prev.view.stage.classList.remove('is-panning');
     if(prev.view.stage.hasPointerCapture(prev.pointer))prev.view.stage.releasePointerCapture(prev.pointer);
   }
@@ -207,7 +210,7 @@
       v.stage.dataset.tool=mode==='pan'?'pan':localTools(mode)?(mode==='erase'?'erase':'draw'):v!==overview?'pan':mode==='select'?'select':'draw';
     }
     $('mergeTools').hidden=mode!=='merge';mergeIds=new Set();
-    $('stageHint').textContent={select:'点击选择 Panel，滚轮缩放整图',pan:'按住鼠标拖动以移动整图，滚轮围绕指针缩放',new:'拖出矩形，新建 Panel',lasso:'沿轮廓拖动，松开后闭合并新建 Panel',include:'在整图上拖动，补选当前 Panel 的区域',exclude:'在整图或清理后视图拖出矩形，松开后填白',erase:'拖动擦除当前 Panel，滚轮调整橡皮檫大小',replace:'在整图上拖动矩形重画当前 Panel',replaceLasso:'在整图上沿轮廓拖动，替换当前选区'}[mode];
+    $('stageHint').textContent={select:'点击选择 Panel，滚轮缩放整图',pan:'按住鼠标拖动以移动整图，滚轮围绕指针缩放',new:'拖出矩形新建 Panel，可从图外灰色区域起笔',lasso:'从图内或灰色区域沿轮廓拖动，松开闭合套索',include:'在整图或四周灰色区域起笔，拖出要补选的矩形',exclude:'在整图或清理后视图拖出矩形填白，可从图外起笔',erase:'拖动擦除当前 Panel，滚轮调整橡皮檫大小',replace:'拖出矩形重画当前 Panel，可从图外起笔',replaceLasso:'沿轮廓拖动以重画当前选区，可从图外起笔'}[mode];
     if(mode==='merge'){$('stageHint').textContent='在原图中点击或勾选两个以上的 Panel，然后确认合并';mergeOptions();}
     controls();overlay();
   }
@@ -452,10 +455,9 @@
     if(drag.mode==='pan'){
       v.pan(e.clientX-drag.clientX,e.clientY-drag.clientY);drag.clientX=e.clientX;drag.clientY=e.clientY;updateZoomButtons();return;
     }
-    const erase=drag.mode==='erase';
-    const points=erase?drag.segments.at(-1).points:drag.points;
-    if(points){for(const sample of e.getCoalescedEvents?.()||[])addPoint(points,v.point(sample,!erase));}
-    drag.to=v.point(e,!erase);if(points)addPoint(points,drag.to);scheduleOverlay();
+    const points=drag.mode==='erase'?drag.segments.at(-1).points:drag.points;
+    if(points){for(const sample of e.getCoalescedEvents?.()||[])addPoint(points,v.point(sample));}
+    drag.to=v.point(e);if(points)addPoint(points,drag.to);scheduleOverlay();
   }
   function finishErase(current){
     const ops=current.segments.map(s=>PanelBrush.erase(model,selected,s,padding())).filter(Boolean);
@@ -472,10 +474,9 @@
       if(drag&&(drag.view!==v||drag.mode!=='erase'))return;
       const delta=clamp(e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?stage.clientHeight:1),-240,240);
       if(editMode==='erase'&&!e.ctrlKey&&!e.metaKey){
-        if(!v.hit(e)&&!drag)return;
         const next=clamp(diameter-Math.sign(delta)*Math.max(1,Math.round(diameter*Math.abs(delta)*.0016)),1,512);
         if(next!==diameter&&drag){
-          const pt=v.point(e,false);addPoint(drag.segments.at(-1).points,pt);
+          const pt=v.point(e);addPoint(drag.segments.at(-1).points,pt);
           drag.segments.push({size:next,points:[pt]});scheduleOverlay();
         }
         diameter=next;v.cursor(e,diameter);
@@ -487,10 +488,11 @@
     stage.addEventListener('pointerdown',e=>{
       if(!ready()||drag||(e.button!==0&&e.button!==1))return;
       const pan=e.button===1||editMode==='pan'||(v!==overview&&!localTools(editMode));
-      if(!pan&&!v.hit(e))return;
+      const mode=pan?'pan':editMode;
+      if((mode==='select'||mode==='merge')&&!v.hit(e))return;
       e.preventDefault();if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
       getSelection()?.removeAllRanges();
-      const pos=v.point(e),mode=pan?'pan':editMode;
+      const pos=v.point(e);
       if(mode==='select'||mode==='merge'){
         const id=panelAt(pos);if(id<0)return;
         if(mode==='select')select(id);
@@ -522,15 +524,40 @@
     });
   }
   views.forEach(bindView);
+  // Intersect the closed lasso with each image edge. Projecting individual
+  // vertices onto the edge would change diagonal strokes and cut corners off.
+  function clipLasso(points,[left,top,right,bottom]){
+    for(const [axis,edge,direction] of [[0,left,1],[0,right,-1],[1,top,1],[1,bottom,-1]]){
+      const inside=p=>(p[axis]-edge)*direction>=0;
+      if(!points.length||points.every(inside))continue;
+      const clipped=[];
+      let previous=points.at(-1),wasInside=inside(previous);
+      for(const point of points){
+        const isInside=inside(point);
+        if(isInside!==wasInside){
+          const t=(edge-previous[axis])/(point[axis]-previous[axis]);
+          const other=previous[1-axis]+t*(point[1-axis]-previous[1-axis]);
+          clipped.push(axis===0?[edge,other]:[other,edge]);
+        }
+        if(isInside)clipped.push(point);
+        previous=point;wasInside=isInside;
+      }
+      points=clipped;
+    }
+    return points;
+  }
   function finishShape(current){
-    const end=current.to,points=current.points;
+    const end=current.to,frame=current.view.box;
+    let points=current.points;
     let box=dragBox(current.from,end);
     if(points) {
-      addPoint(points,end);let left=Infinity,top=Infinity,right=0,bottom=0;
+      addPoint(points,end);points=clipLasso(points,frame);
+      if(points.length<3) {overlay();return;}
+      let left=Infinity,top=Infinity,right=-Infinity,bottom=-Infinity;
       for(const [x,y] of points){left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);}
       box=dragBox([left,top],[right,bottom]);
-      if(points.length<3) {overlay();return;}
     }
+    box=[Math.max(box[0],frame[0]),Math.max(box[1],frame[1]),Math.min(box[2],frame[2]),Math.min(box[3],frame[3])];
     const min=editMode==='exclude'?1:2;
     if(box[2]-box[0]<min||box[3]-box[1]<min||(end[0]===current.from[0]&&end[1]===current.from[1]&&!points)) {overlay();return;}
     if(editMode==='exclude') {
@@ -606,7 +633,8 @@
   }
   function openSave(kind) {
     saveKind=kind;$('saveTitle').textContent=kind==='ppt'?'导出本图幻灯片':kind==='zip'?'打包 Panel 图片':'下载当前 Panel';
-    $('confirmSave').textContent=kind==='ppt'?'下载 PPTX':kind==='zip'?'导出 ZIP':'下载 PNG';
+    PanelIcons.set($('confirmSave'),kind==='ppt'?'presentation':kind==='zip'?'file-archive':'image-down',
+      kind==='ppt'?'下载 PPTX':kind==='zip'?'导出 ZIP':'下载 PNG');
     $('singleSlidePreview').hidden=kind!=='ppt';$('packPicker').hidden=kind==='one';$('figureName').value=figureName||'Fig 1';$('packLabels').replaceChildren();
     for(const [id,p] of model.items.entries()) {
       const label=document.createElement('label'),cb=document.createElement('input');
