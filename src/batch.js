@@ -4,14 +4,15 @@ const PaperBatch=(()=>{
   const tick=()=>new Promise(done=>setTimeout(done,0));
   const element=(tag,txt,cls)=>{const e=document.createElement(tag);if(txt!=null)e.textContent=txt;if(cls)e.className=cls;return e;};
   const action=(title,handler,icon)=>{const b=element('button',title);b.type='button';b.onclick=handler;return icon?PanelIcons.set(b,icon,title):b;};
-  let job=null,region=null,objectUrl='',pageRequest=0;
+  let job=null,region=null,previewRecord=null,previewIndex=-1,previewRequest=0,objectUrl='',pageRequest=0;
   function locked(){return !!job&&job.phase!=='ready';}
   function changed(){if(job?.active&&job.phase==='ready')job.active.dirty=true;}
   function phase(j,value,message){
     if(j!==job)return;
     j.phase=value;const busy=locked();
     $('imageDesk').inert=busy||!j.active?.box;
-    for(const id of ['batchReview','addFigure','reframe'])$(id).disabled=busy;
+    for(const id of ['batchReview','addFigure','locateFigure','reframe','previewReframe'])$(id).disabled=busy;
+    $('paperPpt').disabled=busy||!j.entries.length;
     $('figureNav').inert=busy;
     $('pdfProgress').hidden=!['read','detect','split'].includes(value);
     if(message)$('pdfSummary').textContent=message;
@@ -20,7 +21,8 @@ const PaperBatch=(()=>{
   function destroy(task){if(task)Promise.resolve(task.destroy()).catch(()=>{});}
   function leave(restore=true){
     if(!job)return;
-    const j=job;job=null;region=null;pageRequest++;
+    const j=job;job=null;region=null;previewRecord=null;pageRequest++;
+    $('reframe').hidden=$('previewReframe').hidden=$('locateFigure').hidden=true;
     for(const id of ['batchDialog','pageDialog','pngDialog'])if($(id).open)$(id).close();
     $('pdfDesk').hidden=true;$('imageDesk').hidden=false;$('imageDesk').inert=false;$('figureNav').replaceChildren();$('batchGallery').replaceChildren();
     if(j.prior?.model&&restore)PanelEditor.mount(j.prior.model,j.prior);
@@ -64,8 +66,9 @@ const PaperBatch=(()=>{
     j.active=rec;j.mounted=!!m;
     $('pdfSelection').hidden=false;
     $('sourcePage').textContent='第 '+rec.page+' 页'+(rec.captionPage&&rec.captionPage!==rec.page?' · 图注在第 '+rec.captionPage+' 页':'')+(rec.uncertain?' · 请核对整图范围':'');
-    PanelIcons.set($('reframe'),rec.box?'crop':'crosshair',rec.box?'调整整图范围':'在 PDF 中定位');$('imageDesk').hidden=!m;
+    $('reframe').hidden=!m;$('locateFigure').hidden=!!m;$('imageDesk').hidden=!m;
     if(m)PanelEditor.mount(m,{...rec.saved,figureName:rec.name});
+    else if($('pixelDialog').open)$('pixelDialog').close();
   }
   function nav(j){
     $('figureNav').replaceChildren();
@@ -85,6 +88,12 @@ const PaperBatch=(()=>{
     try{await flush(j);const m=rec.box&&rec.outputs?await modelFor(j,rec):null;if(j!==job)return;mount(j,rec,m);}
     catch(e){if(j===job)PanelEditor.status('载入整图失败。'+e.message,'warn');}
     finally{if(j===job){phase(j,'ready');nav(j);}}
+  }
+  function stepFigure(step){
+    const j=job;if(!j?.active)return false;
+    const next=j.entries[j.entries.indexOf(j.active)+step];
+    if(next&&!locked())switchTo(next);
+    return true;
   }
   function safeFile(s){return s.replace(/[\\/:*?"<>|\u0000-\u001f]/g,'_').replace(/[. ]+$/g,'').slice(0,85)||'Figures';}
   async function load(file){
@@ -125,10 +134,59 @@ const PaperBatch=(()=>{
       PanelEditor.status(first?'可逐图校正，或打开「预览与导出整篇」。':'未自动定位到可导出的整图，可从 PDF 页补选。',first?'ok':'warn');
     }catch(e){if(j===job){leave(true);PanelEditor.status('打开 PDF 失败。'+(e.message||'文件无法解析'),'warn');}}
   }
-  function showImage(blob,title,info){
+  function showImage(blob,title,info,record=job?.mounted?job.active:null,index=-1){
+    previewRequest++;previewIndex=index;
     if(objectUrl)URL.revokeObjectURL(objectUrl);
-    objectUrl=URL.createObjectURL(blob);$('pngImage').src=objectUrl;$('pngTitle').textContent=title;$('pngInfo').textContent=info;
+    previewRecord=job?.entries.includes(record)?record:null;
+    $('previewReframe').hidden=!previewRecord;
+    objectUrl=URL.createObjectURL(blob);$('pngImage').src=objectUrl;$('pngTitle').textContent=title;
+    $('pngInfo').textContent=info+(previewRecord?' · PDF 原图第 '+previewRecord.page+' 页':'');
     if(!$('pngDialog').open)$('pngDialog').showModal();
+  }
+  function showPanel(r,index){
+    const p=r.outputs[index];
+    showImage(p.blob,PanelFiles.filename(r.name,p),p.box[2]+' × '+p.box[3]+' px',r,index);
+  }
+  async function showEditorImage(blob,title,info){
+    const j=job,record=j?.active;
+    if(record?.dirty)await flush(j);
+    if(j===job&&record===j?.active)showImage(blob,title,info);
+  }
+  async function showSlide(j,r){
+    const token=++previewRequest;
+    try{
+      const all=sheets(j),s=all.find(s=>s.parts.includes(r));
+      if(!s){$('batchMessage').textContent='请先勾选本 Figure 及其 Panel。';return;}
+      const blob=await PanelSlides.preview(s,all);
+      if(token===previewRequest&&j===job&&j.entries.includes(r)&&($('batchDialog').open||$('pngDialog').open)&&!$('pageDialog').open)
+        showImage(blob,s.name,'PPT 排版 · '+s.outputs.length+' 张独立图片',r);
+    }catch(e){if(j===job)$('batchMessage').textContent=e.message;}
+  }
+  function navigatePreview(horizontal,step,target){
+    const j=job,large=$('pngDialog').open;
+    if(!j||(!large&&!$('batchDialog').open)||(large&&!previewRecord))return false;
+    if(locked())return true;
+    const groups=[...$('batchGallery').children],group=target.closest('.figure-group');
+    const record=large?previewRecord:group?j.entries[groups.indexOf(group)]:(j.active||j.entries[0]);
+    if(!record)return false;
+    const next=horizontal?record:j.entries[j.entries.indexOf(record)+step];
+    if(!next)return true;
+    const thumbs=group?[...group.querySelectorAll('.thumb')]:[];
+    const current=large?previewIndex:thumbs.indexOf(target.closest('.thumb'));
+    const count=next.outputs?.length||0;
+    const index=horizontal?Math.max(0,Math.min(count-1,current+step)):0;
+    const row=groups[j.entries.indexOf(next)];
+    if(!large||!count){
+      if(large&&!count){
+        if(!$('batchDialog').open)return true;
+        $('pngDialog').close();
+      }
+      const focus=row?.querySelectorAll('.thumb button')[index]||row?.querySelector('.group-head button');
+      focus?.focus();
+    }else if(!horizontal&&previewIndex<0&&next.enabled&&next.outputs.some(p=>p.selected)){
+      showSlide(j,next);
+    }else showPanel(next,index);
+    return true;
   }
   function setPack(j,r,p,on){
     p.selected=on;if(r.saved?.items[p.id])r.saved.items[p.id].pack=on;
@@ -163,7 +221,8 @@ const PaperBatch=(()=>{
     const names=list.map(s=>s.name.toLowerCase()),files=list.flatMap(s=>s.outputs.map(p=>(s.name+'/'+PanelFiles.filename(s.name,p)).toLowerCase()));
     const problem=!list.length?'请至少选择一个 Panel。':!PanelFiles.validName($('archiveName').value.trim())?'请输入有效的导出文件名。':
       list.some(s=>!PanelFiles.validName(s.name))?'请检查 Figure 文件名。':new Set(files).size!==files.length||new Set(names).size!==names.length?'Figure 或 Panel 文件名有重复，请改名。':'';
-    $('batchMessage').textContent=problem;$('downloadPaper').disabled=$('downloadSlides').disabled=!!problem||j.phase==='export';return list;
+    $('batchMessage').textContent=problem;$('downloadPaper').disabled=$('downloadSlides').disabled=!!problem||j.phase==='export';
+    return {list,problem};
   }
   function gallery(j){
     const root=$('batchGallery');root.replaceChildren();
@@ -174,16 +233,13 @@ const PaperBatch=(()=>{
       const name=element('input');name.type='text';name.value=r.name;name.maxLength=80;name.setAttribute('aria-label','Figure 名称 '+r.name);
       name.oninput=()=>{r.name=name.value.trim();if(r.groupId)for(const q of j.entries.filter(q=>q.groupId===r.groupId))q.group=r.name;reviewState(j);};
       const meta=element('small','PDF 第 '+r.page+' 页'+(r.uncertain?' · 请复核范围':'')+(r.outputs?.some(p=>p.whole)?' · 保留整图':''));
-      const adjust=action(r.outputs?.length?'校正':'定位',async()=>{$('batchDialog').close();await switchTo(r);if(!r.outputs?.length)openRegion(r);},r.outputs?.length?'sliders-horizontal':'crosshair');
-      head.append(cb,name,meta,adjust);
-      if(r.outputs?.length)head.append(action('预览幻灯片',async()=>{
-        try{const all=sheets(j),s=all.find(s=>s.parts.includes(r));if(!s){$('batchMessage').textContent='请先勾选本 Figure 及其 Panel。';return;}
-          showImage(await PanelSlides.preview(s,all),s.name,'PPT 排版 · '+s.outputs.length+' 张独立图片');}
-        catch(e){$('batchMessage').textContent=e.message;}
-      },'eye'));
+      const frame=action('从原页重新框选',()=>openRegion(r));frame.dataset.caption='';
+      head.append(cb,name,meta,PanelIcons.set(frame,'crop','从原页重新框选'));
+      if(r.outputs?.length)head.append(action('校正 Panel',async()=>{$('batchDialog').close();await switchTo(r);},'sliders-horizontal'));
+      if(r.outputs?.length)head.append(action('预览幻灯片',()=>showSlide(j,r),'eye'));
       sect.append(head);const grid=element('div',null,'thumb-grid');
-      for(const p of r.outputs||[]){
-        const cell=element('div',null,'thumb'),pic=action('',()=>showImage(p.blob,PanelFiles.filename(r.name,p),p.box[2]+' × '+p.box[3]+' px'));
+      for(const [index,p] of (r.outputs||[]).entries()){
+        const cell=element('div',null,'thumb'),pic=action('',()=>showPanel(r,index));
         pic.setAttribute('aria-label','查看 '+r.name+' '+p.label+' PNG');const im=element('img');im.src=p.thumb;im.alt='';im.loading='lazy';pic.append(im);
         const l=element('label'),ch=element('input');ch.type='checkbox';ch.checked=p.selected;
         ch.onchange=()=>{setPack(j,r,p,ch.checked);if(ch.checked){r.enabled=true;cb.checked=true;}reviewState(j);};
@@ -203,33 +259,62 @@ const PaperBatch=(()=>{
     finally{if(j===job){phase(j,'ready');nav(j);}}
   }
   async function download(kind){
-    const j=job;if(!j||locked())return;const list=reviewState(j);if($('downloadPaper').disabled)return;
-    const name=$('archiveName').value.trim();phase(j,'export');$('batchGallery').inert=$('batchAll').disabled=$('batchNone').disabled=$('archiveName').disabled=$('backToPaper').disabled=true;
-    $('downloadPaper').disabled=$('downloadSlides').disabled=true;$('batchMessage').textContent='正在生成文件…';await tick();
+    const j=job;if(!j||locked())return;
+    const inGallery=$('batchDialog').open;
+    const report=(message,tone='busy')=>{
+      if(j!==job)return;
+      $('batchMessage').textContent=message;
+      if(!inGallery)PanelEditor.status(message,tone);
+    };
+    phase(j,'export');$('batchGallery').inert=true;
+    const controls=['batchAll','batchNone','archiveName','backToPaper','downloadPaper','downloadSlides'];
+    for(const id of controls)$(id).disabled=true;
+    report('正在准备整篇导出…');
+    let invalid=false;
     try{
-      const blob=kind==='pptx'?await PanelSlides.make(list,(n,t)=>$('batchMessage').textContent='正在写入幻灯片 '+n+' / '+t):
+      await tick();await flush(j);if(j!==job)return;
+      const {list,problem}=reviewState(j);
+      if(problem){
+        invalid=true;
+        if(!inGallery){gallery(j);$('batchDialog').showModal();report(problem,'warn');}
+        return;
+      }
+      const filename=$('archiveName').value.trim()+'.'+kind;
+      const blob=kind==='pptx'?await PanelSlides.make(list,(n,t)=>report('正在写入幻灯片 '+n+' / '+t)):
         await PanelOutput.zip(list.flatMap(s=>s.outputs.map(p=>({name:s.name+'/'+PanelFiles.filename(s.name,p),blob:p.blob}))));
-      if(j===job){PanelOutput.save(blob,name+'.'+kind);$('batchMessage').textContent='已生成 '+name+'.'+kind;}
-    }catch(e){if(j===job)$('batchMessage').textContent='导出失败。'+e.message;}
-    finally{if(j===job){phase(j,'ready');$('batchGallery').inert=$('batchAll').disabled=$('batchNone').disabled=$('archiveName').disabled=$('backToPaper').disabled=false;
-      $('downloadPaper').disabled=$('downloadSlides').disabled=false;}}
+      if(j===job){PanelOutput.save(blob,filename);report('已生成 '+filename+'。','ok');}
+    }catch(e){report('导出失败。'+e.message,'warn');}
+    finally{if(j===job){
+      phase(j,'ready');nav(j);$('batchGallery').inert=false;
+      for(const id of controls)$(id).disabled=false;
+      $('downloadPaper').disabled=$('downloadSlides').disabled=invalid;
+    }}
   }
   function drawRegion(){
     if(!region?.source)return;
     const c=$('pageBoard'),ctx=c.getContext('2d'),m=job.pages[region.num-1];
     ctx.clearRect(0,0,c.width,c.height);ctx.drawImage(region.source,0,0);
-    const b=region.box;
-    if(b){
-      const sx=c.width/m.w,sy=c.height/m.h,x=b[0]*sx,y=b[1]*sy,w=(b[2]-b[0])*sx,h=(b[3]-b[1])*sy;
-      ctx.fillStyle='rgba(33,91,160,.12)';ctx.fillRect(x,y,w,h);ctx.strokeStyle='#16589c';ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);
+    const sx=c.width/m.w,sy=c.height/m.h,unit=c.width/Math.max(1,c.clientWidth);
+    const original=region.num===region.record?.page&&region.record.box,b=region.box;
+    if(original){
+      const [x,y,right,bottom]=original;
+      ctx.lineWidth=1.5*unit;ctx.strokeStyle='#657185';ctx.setLineDash([5*unit,4*unit]);
+      ctx.strokeRect(x*sx,y*sy,(right-x)*sx,(bottom-y)*sy);ctx.setLineDash([]);
     }
-    $('useRegion').disabled=!b||b[2]-b[0]<4||b[3]-b[1]<4||region.saving;
-    $('regionInfo').textContent=b?'第 '+region.num+' 页 · '+Math.round(b[2]-b[0])+' × '+Math.round(b[3]-b[1])+' pt':'在页面上拖动绘制一个矩形';
+    if(b){
+      const x=b[0]*sx,y=b[1]*sy,w=(b[2]-b[0])*sx,h=(b[3]-b[1])*sy;
+      ctx.fillStyle='rgba(33,91,160,.10)';ctx.fillRect(x,y,w,h);ctx.strokeStyle='#16589c';ctx.lineWidth=2*unit;ctx.strokeRect(x,y,w,h);
+    }
+    $('regionKey').hidden=!original;
+    $('useRegion').disabled=!b||b[2]-b[0]<4||b[3]-b[1]<4||!!region.start||region.saving;
+    $('regionInfo').textContent='第 '+region.num+' 页 · '+(b?'新范围 '+Math.round(b[2]-b[0])+' × '+Math.round(b[3]-b[1])+' pt':'拖动绘制新范围');
   }
   async function displayPage(n){
     const j=job,r=region;if(!j||!r||r.saving)return;
-    const token=++pageRequest;n=Math.max(1,Math.min(j.pages.length,Math.round(Number(n)||1)));r.num=n;r.start=null;r.source=null;
-    r.box=r.record?.page===n?r.record.box?.slice():null;$('useRegion').disabled=true;
+    const token=++pageRequest;n=Math.max(1,Math.min(j.pages.length,Math.round(Number(n)||1)));
+    if(r.source)r.source.width=r.source.height=1;
+    r.num=n;r.start=null;r.source=null;r.box=null;
+    $('useRegion').disabled=true;$('regionKey').hidden=true;
     $('pageNum').value=n;$('pagePrev').disabled=n===1;$('pageNext').disabled=n===j.pages.length;
     $('regionInfo').textContent='正在渲染第 '+n+' 页…';
     const board=$('pageBoard');board.width=board.height=1;
@@ -240,35 +325,52 @@ const PaperBatch=(()=>{
     }catch(e){if(region===r&&token===pageRequest)$('regionInfo').textContent=e.message;}
   }
   function openRegion(rec){
-    if(!job||locked())return;
-    const r=region={record:rec,num:rec?.page||job.active?.page||1,saving:false};
+    if(!job||locked()||$('pageDialog').open||(rec&&!job.entries.includes(rec)))return;
+    const originPage=rec?.page||job.active?.page||1;
+    const r=region={record:rec,originPage,saving:false};
     let i=1;while(job.entries.some(q=>q.name.toLowerCase()==='fig '+i))i++;
     $('regionName').value=rec?.name||'Fig '+i;$('pageNum').max=job.pages.length;$('pageTotal').textContent='/ '+job.pages.length;
-    $('pageDialog').showModal();displayPage(r.num);
+    $('pageTitle').textContent=rec?'重新框选 '+rec.name:'从 PDF 原页补选 Figure';
+    $('pageDialog').showModal();displayPage(r.originPage);
   }
   async function applyRegion(){
-    const j=job,r=region;if(!j||!r?.box||r.saving||locked())return;
+    const j=job,r=region;if(!j||!r?.source||!r.box||r.saving||locked()||$('useRegion').disabled)return;
+    const prior=r.record,index=prior?j.entries.indexOf(prior):-1;if(prior&&index<0)return;
     const name=$('regionName').value.trim();
     if(!PanelFiles.validName(name)||j.entries.some(q=>q!==r.record&&q.name.toLowerCase()===name.toLowerCase())){$('regionInfo').textContent='请输入唯一且有效的 Figure 名称。';return;}
     r.saving=true;phase(j,'switch');$('pageDialog').querySelectorAll('button,input').forEach(b=>b.disabled=true);
     $('regionInfo').textContent='正在按新范围提取 Panel…';
     try{
       await flush(j);
-      const rec={...r.record,name,page:r.num,box:r.box.slice(),resolution:null,kind:r.record?.kind||'manual',enabled:true,outputs:null,saved:null,dirty:false,uncertain:false,problem:null};
+      if(j!==job||r!==region)return;
+      const settings=prior?.saved?{pad:prior.saved.pad,paper:prior.saved.paper}:null;
+      const resolution=prior?.page===r.num&&prior.resolution?Math.max(3,prior.resolution):null;
+      const rec={...prior,name,page:r.num,box:r.box.slice(),resolution,kind:prior?.kind||'manual',
+        enabled:prior?.outputs?.length?prior.enabled:true,outputs:null,saved:settings,dirty:false,uncertain:false,problem:null};
       const m=await generate(j,rec,true);if(j!==job)return;
-      if(rec.groupId&&name!==r.record.name){
+      const omitted=new Set(prior?.outputs?.filter(p=>!p.selected).map(p=>p.label.toLowerCase()));
+      for(const p of rec.outputs)if(omitted.has(p.label.toLowerCase()))p.selected=m.items[p.id].pack=m.automaticItems[p.id].pack=false;
+      if(rec.saved)rec.saved.items=m.items;
+      if(rec.groupId&&name!==prior.name){
         for(const q of j.entries.filter(q=>q.groupId===rec.groupId))q.group=name;
         rec.group=name;
       }
-      if(r.record)j.entries.splice(j.entries.indexOf(r.record),1,rec);
+      if(prior)j.entries.splice(index,1,rec);
       else{const at=j.entries.findIndex(q=>q.page>rec.page);j.entries.splice(at<0?j.entries.length:at,0,rec);}
-      mount(j,rec,m);$('pageDialog').close();PanelEditor.status('已从第 '+r.num+' 页提取 '+name+'。');
+      mount(j,rec,m);$('pageDialog').close();
+      for(const id of ['pngDialog','saveDialog'])if($(id).open)$(id).close();
+      if($('batchDialog').open)gallery(j);
+      PanelEditor.status('已按第 '+r.num+' 页的新范围更新 '+name+'。');
     }catch(e){if(j===job)$('regionInfo').textContent='提取失败。'+e.message;}
-    finally{if(j===job){r.saving=false;$('pageDialog').querySelectorAll('button,input').forEach(b=>b.disabled=false);phase(j,'ready');nav(j);}}
+    finally{if(j===job){
+      r.saving=false;$('pageDialog').querySelectorAll('button,input').forEach(b=>b.disabled=false);
+      $('pagePrev').disabled=r.num===1;$('pageNext').disabled=r.num===j.pages.length;
+      phase(j,'ready');nav(j);
+    }}
   }
   function init(){
     $('closePdf').onclick=()=>leave(true);$('batchReview').onclick=review;$('backToPaper').onclick=()=>$('batchDialog').close();
-    $('downloadPaper').onclick=()=>download('zip');$('downloadSlides').onclick=()=>download('pptx');
+    $('downloadPaper').onclick=()=>download('zip');$('paperPpt').onclick=$('downloadSlides').onclick=()=>download('pptx');
     $('archiveName').oninput=()=>{if(job)reviewState(job);};
     for(const id of ['batchAll','batchNone'])$(id).onclick=()=>{
       if(!job)return;const yes=id==='batchAll';
@@ -277,10 +379,21 @@ const PaperBatch=(()=>{
     };
     $('batchDialog').oncancel=e=>{if(job?.phase==='export')e.preventDefault();};
     $('pngClose').onclick=()=>$('pngDialog').close();
-    $('pngDialog').onclose=()=>{if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl='';$('pngImage').removeAttribute('src');};
-    $('addFigure').onclick=()=>openRegion(null);$('reframe').onclick=()=>openRegion(job?.active);
+    $('pngDialog').onclose=()=>{
+      if($('pngDialog').open)return;
+      if($('batchDialog').open&&job&&previewRecord){
+        const row=$('batchGallery').children[job.entries.indexOf(previewRecord)];
+        const focus=previewIndex<0?row?.querySelector('[data-icon="eye"]'):row?.querySelectorAll('.thumb button')[previewIndex];
+        focus?.focus();
+      }
+      previewRequest++;if(objectUrl)URL.revokeObjectURL(objectUrl);
+      objectUrl='';previewRecord=null;$('pngImage').removeAttribute('src');
+    };
+    $('addFigure').onclick=()=>openRegion(null);$('reframe').onclick=$('locateFigure').onclick=()=>openRegion(job?.active);
+    $('previewReframe').onclick=()=>{if(previewRecord)openRegion(previewRecord);};
+    $('resetRegion').onclick=()=>{if(region)displayPage(region.originPage);};
     $('pageClose').onclick=()=>$('pageDialog').close();$('pageDialog').oncancel=e=>{if(region?.saving)e.preventDefault();};
-    $('pageDialog').onclose=()=>{pageRequest++;region=null;const c=$('pageBoard');c.width=c.height=1;};
+    $('pageDialog').onclose=()=>{if($('pageDialog').open)return;pageRequest++;if(region?.source)region.source.width=region.source.height=1;region=null;const c=$('pageBoard');c.width=c.height=1;};
     $('pagePrev').onclick=()=>displayPage(region.num-1);$('pageNext').onclick=()=>displayPage(region.num+1);
     $('pageNum').onchange=()=>displayPage($('pageNum').value);$('useRegion').onclick=applyRegion;
     const c=$('pageBoard'),stage=$('pageStage');
@@ -307,5 +420,5 @@ const PaperBatch=(()=>{
     stage.onpointerup=e=>finish(e,true);
     stage.onpointercancel=stage.onlostpointercapture=e=>finish(e,false);
   }
-  return {init,locked,changed,leave,load,showImage};
+  return {init,locked,changed,leave,load,showImage:showEditorImage,stepFigure,navigatePreview};
 })();

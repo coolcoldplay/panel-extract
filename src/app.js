@@ -28,8 +28,8 @@
     for (const id of ['all','pptBtn','jsonBtn','som','promptBtn','apply']) $(id).disabled=busy || !any;
     for (const id of ['pad','paper','outline','actual','fit']) $(id).disabled=busy || !model;
     for (const id of ['openBtn','openPdf','browseFile']) $(id).disabled=busy||PaperBatch.locked();
-    $('blankSet').disabled=busy || !model || (!any&&!blankMode);
-    PanelIcons.set($('blankSet'),blankMode?'rotate-ccw':'file',blankMode?'恢复自动划分':'从空白开始');
+    $('blankSet').disabled=busy || !model;
+    setPressed($('blankSet'),!!model&&!blankMode);
     $('ungroup').hidden=!active()?.sources;$('ungroup').disabled=busy||!active()?.sources;
     $('prev').disabled=busy || selected<=0; $('next').disabled=busy || !has || selected>=model.items.length-1;
     for(const b of document.querySelectorAll('[data-undo]'))b.disabled=busy||!history.length;
@@ -351,9 +351,25 @@
     if(b.matches('[data-undo]'))undo();
   });
   document.addEventListener('keydown',e=>{
+    const target=e.target instanceof Element?e.target:document.body;
+    if(e.defaultPrevented||e.isComposing||busy||target.isContentEditable||
+      target.closest('textarea,select,input:not([type=checkbox]):not([type=button])'))return;
     const modal=document.querySelector('dialog[open]');
-    if (busy || !model || (modal&&modal!==$('pixelDialog')) || e.target.isContentEditable ||
-        ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+    if(/^Arrow(Left|Right|Up|Down)$/.test(e.key)&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.shiftKey){
+      if(drag||$('pageDialog').open)return;
+      const horizontal=e.key==='ArrowLeft'||e.key==='ArrowRight',step=e.key==='ArrowLeft'||e.key==='ArrowUp'?-1:1;
+      if(($('batchDialog').open||$('pngDialog').open)&&PaperBatch.navigatePreview(horizontal,step,target)){e.preventDefault();return;}
+      const largeImage=$('pngDialog').open;
+      if(modal&&modal!==$('pixelDialog')&&!largeImage)return;
+      if(!horizontal){if(PaperBatch.stepFigure(step))e.preventDefault();return;}
+      if(!$('imageDesk').hidden&&model?.items.length){
+        e.preventDefault();if(PaperBatch.locked())return;
+        const next=clamp(selected+step,0,model.items.length-1);
+        if(next!==selected){select(next);if(largeImage)showSelectedImage();}
+      }
+      return;
+    }
+    if(!model||PaperBatch.locked()||(modal&&modal!==$('pixelDialog')))return;
     if((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase()==='c' && active() && !drag && getSelection()?.isCollapsed) {
       e.preventDefault();if(!e.repeat) copySelected();return;
     }
@@ -362,9 +378,15 @@
     }
     if(modal)return;
     if (e.key==='Escape') setEdit('select');
-    if (e.key==='ArrowLeft' && selected>0) {e.preventDefault();select(selected-1);}
-    if (e.key==='ArrowRight' && selected<model.items.length-1) {e.preventDefault();select(selected+1);}
   });
+  async function showSelectedImage(){
+    const original=model,id=selected,c=clean(id);
+    try{
+      const blob=await PanelOutput.png(c);
+      if(model===original&&id===selected&&$('pngDialog').open)
+        await PaperBatch.showImage(blob,'Panel '+model.items[id].label,c.width+' × '+c.height+' px');
+    }finally{c.width=c.height=1;}
+  }
   function dragBox(a,b) {return [Math.floor(Math.min(a[0],b[0])),Math.floor(Math.min(a[1],b[1])),Math.ceil(Math.max(a[0],b[0])),Math.ceil(Math.max(a[1],b[1]))];}
   function remember() {
     history.push({items:structuredClone(model.items),selected,blankMode,restoreIndex});
@@ -403,7 +425,7 @@
   }
   $('previewMerge').onclick=()=>task(async()=>{
     const merged=mergedItem(),c=PanelOutput.paint({...model,items:[merged]},0,'clean',padding(),$('paper').value);
-    try{PaperBatch.showImage(await PanelOutput.png(c),'Panel '+merged.label,c.width+' × '+c.height+' px · 合并预览');}finally{c.width=c.height=1;}
+    try{await PaperBatch.showImage(await PanelOutput.png(c),'Panel '+merged.label,c.width+' × '+c.height+' px · 合并预览');}finally{c.width=c.height=1;}
   });
   $('doMerge').onclick=()=>{
     if($('doMerge').disabled)return;
@@ -594,7 +616,7 @@
       edited(model.items.length?'已恢复 '+model.items.length+' 个自动划分的 Panel。':'此图未识别到自动 Panel。',selected<0?'new':'select',true);
     }else{
       restoreIndex=active()?.autoId??0;blankMode=true;model.items=[];selected=-1;
-      edited('可从 Panel A 开始绘制，或点击「恢复自动划分」。','new',true);
+      edited('已切到空白手动划分，可从 Panel A 开始绘制。','new',true);
     }
   };
   $('rename').onclick=()=>{
@@ -650,7 +672,7 @@
   }
   $('singleSlidePreview').onclick=()=>task(async()=>{
     if(!packIds().length)return;const sheet=await singleSheet(packIds(),$('figureName').value.trim()||'Fig 1');
-    PaperBatch.showImage(await PanelSlides.preview(sheet,[sheet]),sheet.name,'PPT 排版 · '+sheet.outputs.length+' 张独立图片');
+    await PaperBatch.showImage(await PanelSlides.preview(sheet,[sheet]),sheet.name,'PPT 排版 · '+sheet.outputs.length+' 张独立图片');
   });
   $('cancelSave').onclick=()=>$('saveDialog').close();
   $('figureName').oninput=savePreview;$('packLabels').onchange=savePreview;

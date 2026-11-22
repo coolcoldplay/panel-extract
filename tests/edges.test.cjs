@@ -120,11 +120,23 @@ test('select, trim and erase edge pixels from the surrounding workspace', {timeo
     await page.keyboard.press('Escape');await page.mouse.up();
     assert.equal(await page.locator('#stage .selection-guide').isVisible(),false);
     assert.equal(await history(),cancelled);
-    await page.locator('#blankSet').click();
-    assert.equal(await page.locator('#blankSet').getAttribute('aria-label'),'恢复自动划分');
-    assert.equal(await page.locator('#blankSet use').getAttribute('href'),'#icon-rotate-ccw');
-    await page.locator('#blankSet').click();
-    assert.equal(await page.locator('#blankSet').getAttribute('aria-label'),'从空白开始');
+    const auto=page.getByRole('button',{name:'自动划分',exact:true});
+    const icon=()=>auto.locator('use').getAttribute('href');
+    assert.equal(await auto.getAttribute('aria-pressed'),'true');
+    const activeBg=await auto.evaluate(b=>getComputedStyle(b).backgroundColor);
+    const originalCount=await page.evaluate(()=>PanelEditor.snapshot().model.automaticItems.length);
+    const autoIcon=await icon();
+    await auto.click();
+    assert.equal(await auto.getAttribute('aria-pressed'),'false');
+    assert.equal(await icon(),autoIcon);
+    assert.notEqual(await auto.evaluate(b=>getComputedStyle(b).backgroundColor),activeBg);
+    assert.equal(await page.locator('#labels button').count(),0);
+    await auto.focus();await page.keyboard.press('Space');
+    assert.equal(await auto.getAttribute('aria-pressed'),'true');
+    assert.equal(await icon(),autoIcon);
+    assert.equal(await page.locator('#labels button').count(),originalCount);
+    await page.locator('#undo').click();
+    assert.equal(await auto.getAttribute('aria-pressed'),'false');
     assert.deepEqual(errors,[]);
   }finally{await browser.close();}
 });

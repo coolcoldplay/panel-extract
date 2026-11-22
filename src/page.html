@@ -34,18 +34,18 @@
   </section>
   <section class="card pdf-desk" id="pdfDesk" hidden aria-labelledby="pdfName">
     <div class="card-head"><div><h2 id="pdfName">PDF</h2><p id="pdfSummary" aria-live="polite"></p></div><div class="small-row">
-      <button id="addFigure" data-icon="square-dashed-plus">从 PDF 页补选</button><button id="batchReview" class="primary" data-icon="gallery-horizontal-end" data-caption="整篇预览">预览与导出整篇</button><button id="closePdf" data-icon="x">关闭 PDF</button></div></div>
+      <button id="paperPpt" class="primary" data-icon="presentation" data-caption>导出整篇 PPT</button><button id="batchReview" data-icon="gallery-horizontal-end" data-caption="整篇预览">预览与导出整篇</button><button id="addFigure" data-icon="square-dashed-plus">从 PDF 页补选</button><button id="closePdf" data-icon="x">关闭 PDF</button></div></div>
     <progress id="pdfProgress" hidden></progress><div class="figures-nav" id="figureNav" aria-label="PDF 图目录"></div>
-    <div class="pdf-selection" id="pdfSelection" hidden><span id="sourcePage"></span><button id="reframe" data-icon="crop">调整整图范围</button></div>
+    <div class="pdf-selection" id="pdfSelection" hidden><span id="sourcePage"></span><button id="locateFigure" data-icon="crosshair" data-caption hidden>从原页框选 Figure</button><span class="nav-keys">← → 切换 Panel · ↑ ↓ 切换 Figure</span></div>
   </section>
   <div class="columns" id="imageDesk" hidden>
     <section class="card figure" aria-labelledby="figTitle">
       <div class="card-head"><div><h2 id="figTitle">原始整图</h2><p id="fileMeta">—</p></div>
-        <label class="check"><input type="checkbox" id="outline" checked> 显示边界</label>
+        <div class="figure-view-actions"><button id="reframe" data-icon="crop" data-caption hidden>从原页重新框选</button><label class="check"><input type="checkbox" id="outline" checked> 显示边界</label></div>
       </div>
       <div class="drawbar" id="edits" role="group" aria-label="绘制选区">
         <button data-edit="select" aria-pressed="true" data-icon="mouse-pointer-2">选择</button><button data-edit="pan" title="按住鼠标拖动即可移动整图，滚轮可缩放" data-icon="hand">移动</button><button data-edit="new" data-icon="square-dashed">矩形选取</button><button data-edit="lasso" data-icon="lasso">套索圈选</button>
-        <button data-edit="merge" data-icon="group">合并 Panel</button><button id="undo" data-undo data-icon="undo-2">撤销</button><button id="blankSet" data-icon="file">从空白开始</button>
+        <button data-edit="merge" data-icon="group">合并 Panel</button><button id="undo" data-undo data-icon="undo-2">撤销</button><button id="blankSet" data-icon="layout-panel-left" aria-pressed="false" title="关闭后可从空白绘制，再次开启可恢复自动划分">自动划分</button>
       </div>
       <div id="mergeTools" hidden><div id="mergeLabels" role="group" aria-label="勾选合并成员"></div><div class="small-row"><span id="mergeName"></span><button id="previewMerge" data-icon="eye">预览合并</button><button class="primary" id="doMerge" data-icon="check">确认合并</button></div></div>
       <div class="fig-stage viewport" id="stage">
@@ -92,20 +92,20 @@
   <div class="batch-settings"><label class="name-field">导出文件名<input id="archiveName" maxlength="100"></label><div class="small-row"><button id="batchAll" data-icon="list-checks">全选</button><button id="batchNone" data-icon="list-x">全不选</button></div></div>
   <div id="batchGallery"></div><div class="batch-foot"><span id="batchMessage" role="status"></span><button id="downloadPaper" data-icon="file-archive" data-caption="ZIP">下载 ZIP</button><button class="primary" id="downloadSlides" data-icon="presentation" data-caption="PPTX">下载 PPTX</button></div>
 </dialog>
-<dialog id="pageDialog" class="page-dialog" aria-labelledby="pageTitle"><div class="card-head"><div><h2 id="pageTitle">在 PDF 页上选取整图</h2><p>拖动矩形圈住整幅 Figure 及其字母，避开图注。</p></div><button id="pageClose" data-icon="x">取消</button></div>
+<dialog id="pageDialog" class="page-dialog" aria-labelledby="pageTitle" aria-describedby="pageHint"><div class="card-head"><div><h2 id="pageTitle">从 PDF 原页框选 Figure</h2><p id="pageHint">拖动矩形，框入全部 Panel、字母和图例，将图注正文留在框外。确认后将按新范围重新提取本图的 Panel。</p></div><button id="pageClose" data-icon="x">取消</button></div>
   <div class="batch-settings"><label>页码 <input id="pageNum" type="number" min="1"></label><span id="pageTotal"></span><button id="pagePrev" aria-label="上一页" data-icon="chevron-left">‹</button><button id="pageNext" aria-label="下一页" data-icon="chevron-right">›</button>
-    <label>Figure 名称 <input id="regionName" maxlength="80"></label></div>
+    <label>Figure 名称 <input id="regionName" maxlength="80"></label><button id="resetRegion" data-icon="rotate-ccw" data-caption>还原原页</button></div>
   <div class="page-surface" id="pageStage"><canvas id="pageBoard" aria-label="拖动选择整图范围"></canvas></div>
-  <div class="batch-foot"><span id="regionInfo"></span><button id="useRegion" class="primary" data-icon="check">确认范围并提取</button></div>
+  <div class="batch-foot"><div class="region-key" id="regionKey" hidden><i></i>原范围</div><span id="regionInfo" role="status"></span><button id="useRegion" class="primary" data-icon="check" data-caption disabled>确认范围并提取</button></div>
 </dialog>
-<dialog id="pngDialog" class="page-dialog" aria-labelledby="pngTitle"><div class="card-head"><div><h2 id="pngTitle">PNG 预览</h2><p id="pngInfo"></p></div><button id="pngClose" data-icon="x">关闭</button></div><div class="png-stage"><img id="pngImage" alt="将导出的 PNG"></div></dialog>
+<dialog id="pngDialog" class="page-dialog" aria-labelledby="pngTitle"><div class="card-head"><div><h2 id="pngTitle">PNG 预览</h2><p id="pngInfo"></p></div><div class="figure-view-actions"><button id="previewReframe" data-icon="crop" data-caption hidden>从原页重新框选</button><button id="pngClose" data-icon="x">关闭</button></div></div><div class="png-stage"><img id="pngImage" alt="将导出的 PNG"></div></dialog>
 <dialog id="licenseDialog" class="form-dialog" aria-labelledby="noticesTitle">
   <div class="notice-head"><h2 id="noticesTitle">开源项目与许可</h2><form method="dialog"><button autofocus data-icon="x">关闭</button></form></div>
   <p>panel-extract 按 GNU AGPL 第 3 版或更新版本发布。</p>
   <ul class="credits">
     <li><b>BREVESS</b> 提供 Figure 图注标题的识别规则与界面设计参考。<a href="https://github.com/coolcoldplay/Brevess">项目源码</a></li>
     <li><b>Mozilla PDF.js 5.4.624</b> 负责在浏览器解析和渲染 PDF，使用 Apache-2.0。<a href="https://github.com/mozilla/pdf.js/tree/v5.4.624">项目源码</a></li>
-    <li><b>python-pptx 1.0.2</b> 在构建时生成空白 PPTX 模板，使用 MIT 许可。<a href="https://github.com/scanny/python-pptx/tree/v1.0.2">项目源码</a></li>
+    <li><b>python-pptx 1.0.2</b> 在构建时生成带有 Figure 标题文本框的 PPTX 模板，使用 MIT 许可。<a href="https://github.com/scanny/python-pptx/tree/v1.0.2">项目源码</a></li>
     <li><b>Lucide 1.55.0</b> 提供工具图标，采用 ISC 许可，源自 Feather 的图标采用 MIT 许可。<a href="https://github.com/lucide-icons/lucide">项目源码</a></li>
   </ul>
   <p>图版边界计算、遮罩编辑及导出排版由本项目实现。方法参考、第三方资源和源码说明见<a href="https://github.com/coolcoldplay/panel-extract/blob/main/THIRD_PARTY_NOTICES.md">完整来源清单</a>。</p>

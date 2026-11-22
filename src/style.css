@@ -89,6 +89,7 @@ footer a,.credits a,#licenseDialog a{color:inherit;text-underline-offset:3px}
 .drawbar{display:flex;align-items:center;flex-wrap:wrap;gap:5px;padding:0 14px 10px}
 .drawbar button{min-height:29px;font-size:12px;padding:3px 8px}
 .drawbar #blankSet{margin-left:auto}
+.drawbar #blankSet[aria-pressed=false]{color:#737373}
 .drawbar button[aria-pressed="true"]{background:var(--soft);border-color:#888888;color:var(--strong)}
 .actions select{padding:7px 9px;font-size:12px}
 .form-dialog{width:min(420px,92vw);padding:19px;border:1px solid var(--line);border-radius:0;color:var(--ink);max-height:90vh;overflow:auto}
@@ -111,9 +112,12 @@ footer a,.credits a,#licenseDialog a{color:inherit;text-underline-offset:3px}
 #mergeLabels label{display:flex;align-items:center;gap:3px;cursor:pointer;padding:2px 7px;font:13px var(--mono)}
 #mergeLabels label:has(input:checked){border-color:#404040;font-weight:700}#mergeLabels input{margin:0}#mergeTools button{min-height:28px;padding:3px 8px}#mergeName{margin-right:auto}
 .pdf-desk{margin-bottom:14px}.pdf-desk .card-head{padding-block:10px}.pdf-desk h2{font-size:16px;overflow-wrap:anywhere}
+#paperPpt{background:var(--ink);color:#fff}#paperPpt:hover:not(:disabled){background:var(--strong)}
 .figures-nav{display:flex;gap:5px;overflow-x:auto;padding:0 16px 8px}.figures-nav:empty{display:none}.figures-nav button{flex:none;text-align:left;padding:4px 9px;font-size:13px}
 .figures-nav small{display:block;font:11px var(--mono);margin-top:2px;color:var(--muted)}.figures-nav button[aria-pressed=true]{background:var(--soft);font-weight:700}
 .pdf-selection{border-top:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:5px 16px;font-size:12px;color:var(--muted)}.pdf-selection button{min-height:25px;font-size:12px;padding:2px 7px}
+.figure-view-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:4px 12px}
+.pdf-selection{flex-wrap:wrap}.nav-keys{margin-left:auto;font-size:12px}
 #pdfProgress{width:calc(100% - 32px);height:5px;accent-color:var(--ink);margin:0 16px 12px}.linkbtn{border:0;background:transparent;padding:0;min-height:0;font-size:inherit;font-weight:400;text-decoration:underline;text-underline-offset:3px;color:var(--muted)}
 .batch-dialog,.page-dialog{width:min(1100px,94vw);max-width:96vw;max-height:92dvh;padding:0;border:1px solid #999;color:var(--ink);background:#fff}
 .batch-dialog[open],.page-dialog[open]{display:flex;flex-direction:column}.batch-dialog::backdrop,.page-dialog::backdrop{background:#20202088}
@@ -125,7 +129,7 @@ footer a,.credits a,#licenseDialog a{color:inherit;text-underline-offset:3px}
 .group-head button{min-height:28px;font-size:12px;padding:3px 7px}.thumb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:7px}
 .thumb{background:#f7f7f7;min-width:0}.thumb:has(input:not(:checked)){opacity:.55}.thumb button{display:block;width:100%;height:88px;padding:5px}
 .thumb img{width:100%;height:100%;object-fit:contain}.thumb label{display:flex;align-items:center;gap:5px;padding:3px 5px;font:12px/1.5 var(--mono);cursor:pointer}
-.page-surface,.png-stage{overflow:auto;min-height:0;background:#ededed;text-align:center;padding:12px}.page-surface canvas{width:min(100%,800px);height:auto;vertical-align:top;touch-action:none;cursor:crosshair}
+.page-surface,.png-stage{overflow:auto;min-height:0;background:#ededed;text-align:center;padding:12px}
 .png-stage img{max-width:100%;height:auto;vertical-align:top;background:repeating-conic-gradient(#f9f9f9 0 25%,#e5e5e5 0 50%) 0 0/16px 16px}
 #licenseDialog{width:min(760px,92vw)}#licenseDialog pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}.dialog-actions{flex-wrap:wrap}
 .viewport,#pixelScroll.viewport{position:relative;display:block;overflow:hidden;padding:0;touch-action:none;user-select:none;isolation:isolate}
@@ -136,7 +140,11 @@ footer a,.credits a,#licenseDialog a{color:inherit;text-underline-offset:3px}
 .viewport.is-panning,.viewport.is-panning .surface{cursor:grabbing}.viewport[data-tool="draw"],.viewport[data-tool="draw"] .surface{cursor:crosshair}
 .viewport[data-tool="erase"],.viewport[data-tool="erase"] .surface{cursor:none}
 .viewport .selection-guide,#pixelScroll .selection-guide{position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;pointer-events:none;background:transparent;z-index:1}
-#pageStage{padding:28px;cursor:crosshair;touch-action:pinch-zoom}
+#pageDialog{height:min(92dvh,1050px)}
+#pageStage{flex:1 1 0;display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);place-items:center;overflow:hidden;padding:clamp(12px,2.6vmin,28px);cursor:crosshair;touch-action:none;user-select:none}
+#pageBoard{width:auto;height:auto;max-width:100%;max-height:100%;background:white;box-shadow:0 1px 7px #0002}
+.region-key{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.region-key i{width:16px;border-top:2px dashed #657185}
 .preview-stage.viewport{height:clamp(210px,31vh,390px)}
 #noPreview{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
 #editor{margin:12px 18px;padding:10px 0 0;border-top:1px solid var(--line)}

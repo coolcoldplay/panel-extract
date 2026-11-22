@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | BREVESS | 本项目在 `src/pdf.js` 的 `matchesCaptionHeader` 中改编了上游 `parseCaptionHeader` 的匹配和排除规则，用于识别正文图、补图与扩展数据图的标题。界面布局也参考了该项目。 | GNU AGPL-3.0-or-later。[公开源码快照](https://github.com/coolcoldplay/Brevess/blob/6acab0f3d6b507dd0c072c5751516deba89a411e/extension/core/pdf-native-figures.js) · [上游许可](https://github.com/coolcoldplay/Brevess/blob/main/LICENSE) |
 | Mozilla PDF.js / pdfjs-dist 5.4.624 | 在浏览器内解析 PDF、读取字形坐标和绘图操作、渲染整图。构建脚本从官方 npm 发布包取主模块、Worker 和所需资源，压缩嵌入网页。 | Mozilla Foundation 与贡献者，Apache-2.0。[项目源码](https://github.com/mozilla/pdf.js/tree/v5.4.624) · [官方发布包](https://www.npmjs.com/package/pdfjs-dist/v/5.4.624) · [许可副本](licenses/pdfjs/LICENSE) |
-| python-pptx 1.0.2 | 构建时从默认模板生成空白演示文稿，网页随附其 Open XML 部件。加入图片、设置名称和幻灯片尺寸、按原图定位均由 `src/slides.js` 执行。 | Steve Canny 与贡献者，MIT。[项目源码](https://github.com/scanny/python-pptx/tree/v1.0.2) · [许可副本](licenses/python-pptx-MIT.txt) |
+| python-pptx 1.0.2 | 构建时生成带标题文本框的演示文稿模板，网页随附其 Open XML 部件。填入图名、加入图片、设置幻灯片尺寸和按原图定位由 `src/slides.js` 执行。 | Steve Canny 与贡献者，MIT。[项目源码](https://github.com/scanny/python-pptx/tree/v1.0.2) · [许可副本](licenses/python-pptx-MIT.txt) |
 | Microsoft Playwright | 开发测试工具。测试脚本用浏览器验证空白界面、文件导入和导出。 | Apache-2.0。[项目源码与许可](https://github.com/microsoft/playwright) |
 | Lucide / lucide-static 1.55.0 | 工具栏、预览与导出按钮的图标。所选 SVG 路径合并在 `src/icons.svg` 中，直接内嵌到独立网页。 | Lucide Icons and Contributors，ISC。源自 Feather 的部分由 Cole Bemis 授权，使用 MIT。[上游项目](https://github.com/lucide-icons/lucide) · [固定版本](https://www.npmjs.com/package/lucide-static/v/1.55.0) · [完整许可与版权声明](licenses/lucide-ISC-MIT.txt) |
 

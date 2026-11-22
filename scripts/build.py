@@ -14,6 +14,9 @@ from importlib.metadata import version
 from pathlib import Path, PurePosixPath
 
 from pptx import Presentation
+from pptx.dml.color import RGBColor
+from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
+from pptx.util import Pt
 
 ROOT = Path(__file__).resolve().parents[1]
 PDF_VERSION = "5.4.624"
@@ -68,11 +71,26 @@ def pdf_assets(data):
     return assets, notices
 
 
-def blank_presentation():
+def presentation_template():
     if version("python-pptx") != "1.0.2":
         raise RuntimeError("Install the version of python-pptx in requirements.txt")
     deck = Presentation()
-    deck.slides.add_slide(deck.slide_layouts[6])
+    slide = deck.slides.add_slide(deck.slide_layouts[6])
+    title = slide.shapes.add_textbox(Pt(6), Pt(4), Pt(360), Pt(26))
+    title.name = "Figure title"
+    frame = title.text_frame
+    frame.margin_left = frame.margin_right = frame.margin_top = frame.margin_bottom = 0
+    frame.auto_size = MSO_AUTO_SIZE.NONE
+    frame.word_wrap = False
+    frame.vertical_anchor = MSO_ANCHOR.MIDDLE
+    paragraph = frame.paragraphs[0]
+    paragraph.alignment = PP_ALIGN.LEFT
+    run = paragraph.add_run()
+    run.text = "Figure"
+    run.font.name = "Arial"
+    run.font.size = Pt(18)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor.from_string("202020")
     deck.core_properties.title = "panel-extract"
     deck.core_properties.author = deck.core_properties.last_modified_by = "panel-extract"
     output = io.BytesIO()
@@ -102,7 +120,7 @@ def build(local_archive=None):
     )
     page = page.replace("__THIRD_PARTY_LICENSES__", license_html)
     page = page.replace("__PDF_ASSETS__", json.dumps(assets, separators=(",", ":")))
-    page = page.replace("__PPT_PARTS__", json.dumps(blank_presentation(), separators=(",", ":")))
+    page = page.replace("__PPT_PARTS__", json.dumps(presentation_template(), separators=(",", ":")))
     target = ROOT / "docs/index.html"
     target.parent.mkdir(exist_ok=True)
     target.write_text(page, encoding="utf-8", newline="\n")

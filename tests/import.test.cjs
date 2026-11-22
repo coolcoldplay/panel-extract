@@ -83,8 +83,16 @@ test('blank landing page, local imports, figure preview and exports', {timeout:1
     // Start with a pasted PDF, then close it to restore the empty workspace.
     await transfer(page,'paste',input.pdf,'clipboard-figure.pdf','application/pdf');
     await pdfReady();
+    const topPpt=page.locator('#pdfDesk .card-head').getByRole('button',{name:'导出整篇 PPT',exact:true});
+    const directDownload=page.waitForEvent('download');
+    await topPpt.click();
+    const deck=await directDownload;
+    assert.equal(deck.suggestedFilename(),'clipboard-figure.pptx');
+    assert.equal(await deck.failure(),null);
+    assert.equal(await page.locator('#batchDialog').isVisible(),false);
     await page.locator('#reframe').click();
-    await page.waitForFunction(()=>document.querySelector('#pageBoard').width>300&&!document.querySelector('#useRegion').disabled);
+    await page.waitForFunction(()=>document.querySelector('#pageBoard').width>300);
+    assert.equal(await page.locator('#useRegion').isDisabled(),true);
     const board=await page.locator('#pageBoard').boundingBox();
     const frame=await page.locator('#pageStage').boundingBox();
     assert.ok(board.x-frame.x>8&&board.y-frame.y>8);
@@ -115,6 +123,15 @@ test('blank landing page, local imports, figure preview and exports', {timeout:1
     await page.locator('#browseFile').click();
     await (await chooser).setFiles({name:'picked.png', mimeType:'image/png', buffer:input.png});
     await imageReady('picked.png');
+    const automatic=page.getByRole('button',{name:'自动划分',exact:true});
+    assert.equal(await topPpt.isVisible(),false);
+    assert.equal(await page.locator('#reframe').isVisible(),false);
+    await automatic.click();
+    assert.equal(await automatic.getAttribute('aria-pressed'),'false');
+    assert.equal(await page.locator('#labels button').count(),0);
+    await automatic.click();
+    assert.equal(await automatic.getAttribute('aria-pressed'),'true');
+    assert.deepEqual(await page.locator('#labels button').allTextContents(),['A','B']);
     await transfer(page,'drop',input.png,'dropped.png','image/png');
     await imageReady('dropped.png');
     await transfer(page,'paste',input.png,'pasted.png','image/png');

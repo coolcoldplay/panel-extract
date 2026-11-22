@@ -28,14 +28,27 @@ const PanelSlides=(()=>{
   const xmlDoc=d=>new XMLSerializer().serializeToString(d);
   const escape=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const cache=new WeakMap();
+  const emuPerPoint=12700,maxSlideSide=51206400;
+  const measure=document.createElement('canvas').getContext('2d');
+  measure.font='bold 100px Arial, sans-serif';
   function layout(sheets){
     const w=Math.max(...sheets.map(s=>s.physical[0])),h=Math.max(...sheets.map(s=>s.physical[1]));
-    const scale=Math.min(12700,51206400/Math.max(w,h));
-    return {scale,w:Math.max(914400,Math.round(w*scale)),h:Math.max(914400,Math.round(h*scale))};
+    const fontPt=Math.max(12,Math.min(30,Math.round(w*.043))),header=2*fontPt*emuPerPoint;
+    const scale=Math.min(emuPerPoint,maxSlideSide/w,(maxSlideSide-header)/h);
+    const contentHeight=Math.max(914400,Math.round(h*scale));
+    const longest=Math.max(...sheets.map(s=>measure.measureText(s.name).width));
+    // Keep long custom titles legible even on a very narrow figure.
+    const titleWidth=Math.ceil((longest*9/100+fontPt)*emuPerPoint);
+    return {scale,w:Math.min(maxSlideSide,Math.max(914400,Math.round(w*scale),titleWidth)),h:contentHeight+header,contentHeight,header,fontPt};
+  }
+  function titleBox(name,frame){
+    const x=Math.round(frame.header*.25),y=Math.round(frame.header*.12),w=frame.w-2*x;
+    const pt=Math.min(frame.fontPt,w/emuPerPoint*100/Math.max(1,measure.measureText(name).width));
+    return {x,y,w,h:frame.header-2*y,pt:Math.max(1,Math.floor(pt*100)/100)};
   }
   function position(sheet,p,frame){
     const [width,height]=sheet.physical,[sw,sh]=sheet.size,[x,y,w,h]=p.layoutBox||p.box, scale=frame.scale;
-    return [Math.round((frame.w-width*scale)/2+x*width/sw*scale),Math.round((frame.h-height*scale)/2+y*height/sh*scale),
+    return [Math.round((frame.w-width*scale)/2+x*width/sw*scale),frame.header+Math.round((frame.contentHeight-height*scale)/2+y*height/sh*scale),
       Math.max(1,Math.round(w*width/sw*scale)),Math.max(1,Math.round(h*height/sh*scale))];
   }
   async function placed(p,others){
@@ -73,6 +86,9 @@ const PanelSlides=(()=>{
   async function preview(sheet,sheets){
     const f=layout(sheets),k=1200/Math.max(f.w,f.h),c=PanelEngine.makeCanvas(Math.max(1,Math.round(f.w*k)),Math.max(1,Math.round(f.h*k)));
     const cx=c.getContext('2d');cx.fillStyle='white';cx.fillRect(0,0,c.width,c.height);
+    const title=titleBox(sheet.name,f);cx.fillStyle='#202020';cx.textBaseline='middle';
+    cx.font='bold '+(title.pt*emuPerPoint*k)+'px Arial, sans-serif';
+    cx.fillText(sheet.name,title.x*k,(title.y+title.h/2)*k,title.w*k);
     for(const p of sheet.outputs){
       const b=await createImageBitmap(await placed(p,sheet.outputs));const [x,y,w,h]=position(sheet,p,f);
       cx.drawImage(b,x*k,y*k,w*k,h*k);b.close();
@@ -81,6 +97,14 @@ const PanelSlides=(()=>{
   }
   function append(doc,parent,ns,name,attrs){
     const e=doc.createElementNS(ns,name);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);parent.append(e);return e;
+  }
+  function setSlideTitle(tree,name,frame,shapeId){
+    const textBox=tree.getElementsByTagNameNS(P,'sp')[0],title=titleBox(name,frame);
+    const first=tag=>textBox.getElementsByTagNameNS(A,tag)[0];
+    textBox.getElementsByTagNameNS(P,'cNvPr')[0].setAttribute('id',shapeId);
+    first('off').setAttribute('x',title.x);first('off').setAttribute('y',title.y);
+    first('ext').setAttribute('cx',title.w);first('ext').setAttribute('cy',title.h);
+    first('rPr').setAttribute('sz',Math.round(title.pt*100));first('t').textContent=name;
   }
   async function make(sheets,progress){
     if(!sheets.length||sheets.some(s=>!s.outputs.length))throw Error('请选择至少一个 Panel');
@@ -107,6 +131,7 @@ const PanelSlides=(()=>{
       slide.documentElement.setAttribute('showMasterSp','0');
       const common=slide.getElementsByTagNameNS(P,'cSld')[0];common.setAttribute('name',s.name);
       const tree=slide.getElementsByTagNameNS(P,'spTree')[0];
+      setSlideTitle(tree,s.name,frame,s.outputs.length+2);
       for(const [j,p] of s.outputs.entries()){
         const [x,y,w,h]=position(s,p,frame),id='rIdImage'+(j+1),media='panel'+(++picture)+'.png';
         const title=PanelFiles.filename(s.name,p).slice(0,-4);
